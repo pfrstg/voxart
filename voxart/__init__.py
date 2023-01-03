@@ -37,7 +37,6 @@ class Design:
             yield np.take(self._vox, i, axis=axis)
 
     def projections_fig(self):
-        # TODO: make sure cmap handles all 1 values
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
             #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
@@ -50,7 +49,6 @@ class Design:
         return fig
 
     def slices_fig(self):
-        # TODO: make sure cmap handles all 1 values
         fig, axes = plt.subplots(3, self.size, figsize=(2 * self.size, 6))
         for axis in range(3):
             for i, slc in enumerate(self.slices(axis)):
@@ -118,7 +116,6 @@ class Goal:
         return design
 
     def fig(self):
-        # TODO: make sure cmap handles all 1 values
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for goal_idx, ax in enumerate(axes):
             #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
