@@ -1,4 +1,4 @@
-import numpy.testing as nptesting
+import numpy as np
 import voxart
 
 def test_empty_design():
@@ -21,9 +21,9 @@ def test_goal_from_arrays():
         [[0, 0], [1, 1]],
         [[1, 0], [0, 0]])
     assert goal.size == 2
-    nptesting.assert_array_equal(goal.goal(0), [[1, 1], [1, 1]])
-    nptesting.assert_array_equal(goal.goal(1), [[0, 0], [1, 1]])
-    nptesting.assert_array_equal(goal.goal(2), [[1, 0], [0, 0]])
+    np.testing.assert_array_equal(goal.goal(0), [[1, 1], [1, 1]])
+    np.testing.assert_array_equal(goal.goal(1), [[0, 0], [1, 1]])
+    np.testing.assert_array_equal(goal.goal(2), [[1, 0], [0, 0]])
 
 def test_goal_add_frame():
     goal = voxart.Goal.from_size(4)
@@ -34,7 +34,7 @@ def test_goal_add_frame():
     assert goal.goal(0).sum() == 12
     assert goal.goal(1).sum() == 12
     assert goal.goal(2).sum() == 12
-    nptesting.assert_array_equal(goal.goal(0),
+    np.testing.assert_array_equal(goal.goal(0),
                                  [[1, 1, 1, 1],
                                   [1, 0, 0, 1],
                                   [1, 0, 0, 1],
@@ -58,42 +58,69 @@ def test_goal_rotations():
     assert len(rotations) == 16
     # Goal 0 is always the same
     for r in rotations:
-        nptesting.assert_array_equal(r.goal(0),
+        np.testing.assert_array_equal(r.goal(0),
                                      [[1, 0],
                                       [0, 0]])
     # Goal 1 comes in blocks of 4
     for r in rotations[0:4]:
-        nptesting.assert_array_equal(r.goal(1),
+        np.testing.assert_array_equal(r.goal(1),
                                      [[1, 1],
                                       [0, 0]])
     for r in rotations[4:8]:
-        nptesting.assert_array_equal(r.goal(1),
+        np.testing.assert_array_equal(r.goal(1),
                                      [[1, 0],
                                       [1, 0]])
     for r in rotations[8:12]:
-        nptesting.assert_array_equal(r.goal(1),
+        np.testing.assert_array_equal(r.goal(1),
                                      [[0, 0],
                                       [1, 1]])
     for r in rotations[12:16]:
-        nptesting.assert_array_equal(r.goal(1),
+        np.testing.assert_array_equal(r.goal(1),
                                      [[0, 1],
                                       [0, 1]])
     # Goal 2 switches every time
     for r in rotations[0:16:4]:
-        nptesting.assert_array_equal(r.goal(2),
+        np.testing.assert_array_equal(r.goal(2),
                                      [[1, 1],
                                       [0, 1]])
     for r in rotations[1:16:4]:
-        nptesting.assert_array_equal(r.goal(2),
+        np.testing.assert_array_equal(r.goal(2),
                                      [[1, 1],
                                       [1, 0]])
     for r in rotations[2:16:4]:
-        nptesting.assert_array_equal(r.goal(2),
+        np.testing.assert_array_equal(r.goal(2),
                                      [[1, 0],
                                       [1, 1]])
     for r in rotations[3:16:4]:
-        nptesting.assert_array_equal(r.goal(2),
+        np.testing.assert_array_equal(r.goal(2),
                                      [[0, 1],
                                       [1, 1]])
+
+
+def test_goal_create_base_design():
+    xface = np.array(
+        [[0, 1, 1],
+         [1, 1, 1],
+         [1, 1, 1]])
+    yface = np.array(
+        [[1, 1, 0],
+         [1, 1, 0],
+         [1, 1, 1]])
+    zface = np.array(
+        [[1, 1, 1],
+         [1, 0, 1],
+         [1, 1, 1]])
+    goal = voxart.Goal.from_arrays(xface, yface, zface)
+    design = goal.create_base_design()
+    print(design.vox)
+    # The x face removes 3 voxesl
+    # The yface removes 6 voxels that don't intersect
+    # The zface removes 3 voxels, one of which intersects the yface
+    assert design.vox.sum() == 27 - (3 + 6 + 3 - 1)
+    np.testing.assert_array_equal(design.projection(0), xface)
+    np.testing.assert_array_equal(design.projection(1), yface)
+    np.testing.assert_array_equal(design.projection(2), zface)
+
+
 
 # TODO: test goal base design
