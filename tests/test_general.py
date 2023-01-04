@@ -122,5 +122,70 @@ def test_goal_create_base_design():
     np.testing.assert_array_equal(design.projection(2), zface)
 
 
+def test_create_masks():
+    interior, faces, edges = voxart.create_masks(4)
+    np.testing.assert_array_equal(
+        interior,
+        [[[False, False, False, False],
+          [False, False, False, False],
+          [False, False, False, False],
+          [False, False, False, False]],
 
-# TODO: test goal base design
+         [[False, False, False, False],
+          [False,  True,  True, False],
+          [False,  True,  True, False],
+          [False, False, False, False]],
+
+         [[False, False, False, False],
+          [False,  True,  True, False],
+          [False,  True,  True, False],
+          [False, False, False, False]],
+
+         [[False, False, False, False],
+          [False, False, False, False],
+          [False, False, False, False],
+          [False, False, False, False]]])
+
+    np.testing.assert_array_equal(
+        faces,
+        [[[False, False, False, False],
+          [False,  True,  True, False],
+          [False,  True,  True, False],
+          [False, False, False, False]],
+
+         [[False,  True,  True, False],
+          [ True, False, False,  True],
+          [ True, False, False,  True],
+          [False,  True,  True, False]],
+
+         [[False,  True,  True, False],
+          [ True, False, False,  True],
+          [ True, False, False,  True],
+          [False,  True,  True, False]],
+
+         [[False, False, False, False],
+          [False,  True,  True, False],
+          [False,  True,  True, False],
+          [False, False, False, False]]])
+
+    np.testing.assert_array_equal(
+        edges,
+        [[[ True,  True,  True,  True],
+          [ True, False, False,  True],
+          [ True, False, False,  True],
+          [ True,  True,  True,  True]],
+
+         [[ True, False, False,  True],
+          [False, False, False, False],
+          [False, False, False, False],
+          [ True, False, False,  True]],
+
+         [[ True, False, False,  True],
+          [False, False, False, False],
+          [False, False, False, False],
+          [ True, False, False,  True]],
+
+         [[ True,  True,  True,  True],
+          [ True, False, False,  True],
+          [ True, False, False,  True],
+          [ True,  True,  True,  True]]])

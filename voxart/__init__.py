@@ -127,3 +127,19 @@ class Goal:
             ax.grid(visible=True)
         plt.close()
         return fig
+
+
+def create_masks(size):
+    vox = np.zeros((size, size, size))
+    interior = np.full((size, size, size), False)
+    interior[1:size-1, 1:size-1, 1:size-1] = True
+
+    edges = np.full((size, size, size), False)
+    for axis, idx0, idx1 in itertools.product(range(3), [0, size-1], [0, size-1]):
+        indices = [idx0, idx1]
+        indices.insert(axis, slice(None))
+        edges[tuple(indices)] = True
+
+    faces = np.full((size, size, size), True) & ~interior & ~edges
+
+    return interior, faces, edges
