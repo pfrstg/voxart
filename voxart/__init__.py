@@ -1,3 +1,4 @@
+import copy
 import itertools
 import numpy as np
 import pandas as pd
@@ -164,8 +165,7 @@ def create_design_random(goal, rng=None):
     starting_design = goal.create_base_design()
     interior, faces, edges = create_masks(goal.size)
 
-    # TODO, make a better clone
-    design = Design(starting_design.vox)
+    design = copy.deepcopy(starting_design)
     while True:
         removable = design.find_removable_slow() & ~edges
         if np.sum(removable) == 0:
