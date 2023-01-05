@@ -1,3 +1,5 @@
+# Copyright 2023, Patrick Riley, github: pfrstg
+
 import numpy as np
 import voxart
 
