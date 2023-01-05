@@ -11,7 +11,7 @@ class Design:
         if not (vox.shape[0] == vox.shape[1] and vox.shape[1] == vox.shape[2]):
             raise ValueError(f"Voxels for design must have equal dims, got {vox.shape}")
 
-        self._vox = np.copy(vox)
+        self._vox = np.copy(vox.astype(int))
 
     @staticmethod
     def from_size(size):
@@ -35,6 +35,18 @@ class Design:
     def slices(self, axis):
         for i in range(self.size):
             yield np.take(self._vox, i, axis=axis)
+
+    def find_removable_slow(self):
+        out = np.full((self.size, self.size, self.size), False)
+        for x, y, z in itertools.product(range(self.size), range(self.size), range(self.size)):
+            if not self._vox[x, y, z]:
+                continue
+            if (np.sum(self._vox[x, y, :]) > 1 and
+                np.sum(self._vox[:, y, z]) > 1 and
+                np.sum(self._vox[x, :, z]) > 1):
+                out[x, y, z] = True
+        return out
+
 
     def projections_fig(self):
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
@@ -143,3 +155,30 @@ def create_masks(size):
     faces = np.full((size, size, size), True) & ~interior & ~edges
 
     return interior, faces, edges
+
+
+def create_design_random(goal, rng=None):
+    if rng is None:
+        rng = np.random.default_rng()
+
+    starting_design = goal.create_base_design()
+    interior, faces, edges = create_masks(goal.size)
+
+    # TODO, make a better clone
+    design = Design(starting_design.vox)
+    while True:
+        removable = design.find_removable_slow() & ~edges
+        if np.sum(removable) == 0:
+            break
+        removable_indices = np.where(removable)
+        spot_idx = rng.integers(len(removable_indices[0]))
+        spot = (removable_indices[0][spot_idx],
+                removable_indices[1][spot_idx],
+                removable_indices[2][spot_idx])
+        #print(f"Removing {spot}")
+        design.vox[spot] = 0
+        assert np.all(design.projection(0) == starting_design.projection(0))
+        assert np.all(design.projection(1) == starting_design.projection(1))
+        assert np.all(design.projection(2) == starting_design.projection(2))
+
+    return design
