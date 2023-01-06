@@ -85,14 +85,29 @@ def random_goal(rng):
     goal.add_frame()
     return goal
 
-def test_search_design_random(random_goal):
-    design = voxart.search_design_random(random_goal)
-    np.testing.assert_array_equal(random_goal.goal(0), design.projection(0))
-    np.testing.assert_array_equal(random_goal.goal(1), design.projection(1))
-    np.testing.assert_array_equal(random_goal.goal(2), design.projection(2))
+@pytest.mark.parametrize("strategy", [voxart.SearchStrategy.RANDOM,
+                                      voxart.SearchStrategy.RANDOM_FACE_FIRST])
+def test_search_design_random(random_goal, strategy):
+    results = voxart.search(random_goal, strategy, 10, 3)
+    assert len(results.best()) == 3
+    assert len(results.all_objective_values()) == 10
+    best = results.best()[0]
+    np.testing.assert_array_equal(random_goal.goal(0), best.projection(0))
+    np.testing.assert_array_equal(random_goal.goal(1), best.projection(1))
+    np.testing.assert_array_equal(random_goal.goal(2), best.projection(2))
 
-def test_search_design_random_face_first(random_goal):
-    design = voxart.search_design_random_face_first(random_goal)
-    np.testing.assert_array_equal(random_goal.goal(0), design.projection(0))
-    np.testing.assert_array_equal(random_goal.goal(1), design.projection(1))
-    np.testing.assert_array_equal(random_goal.goal(2), design.projection(2))
+def test_objective_value():
+    # This has 4 edges, 2 faces, 1 interior
+    design = voxart.Design([[[1, 1, 1],
+                             [1, 0, 1],
+                             [1, 1, 1]],
+                            [[0, 0 ,0],
+                             [1, 1, 1],
+                             [0, 0, 0]],
+                            [[1, 1, 1],
+                             [1, 0, 1],
+                             [1, 1, 1]]])
+
+    masks = voxart.Masks(3)
+    assert voxart.objective_value(design, masks, face_weight=10, interior_weight=1) == 21
+    assert voxart.objective_value(design, masks, face_weight=1, interior_weight=10) == 12

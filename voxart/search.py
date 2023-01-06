@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional, Tuple
+from typing import Callable
 
 import copy
+from dataclasses import dataclass, field
+import enum
+import functools
+import heapq
 import itertools
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
+
 
 class Masks:
     def __init__(self, size: int):
@@ -22,6 +25,39 @@ class Masks:
             self.edges[tuple(indices)] = True
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
+
+
+@dataclass(order=True)
+class SearchResultsEntry:
+    # Note that we are using lower is better objective values, but because
+    # we use heapq which is also lower is better, we have to invert this value
+    design: Design = field(compare=False)
+    objective_value: float
+
+class SearchResults:
+    """Maintains state about the entire search process for a design."""
+
+    def __init__(self, top_n: int, value_fn: Callable[[Design], float]):
+        self._top_n_to_keep = top_n
+        self._best_results_heap = []
+        self._all_objective_values = []
+        self._value_fn = value_fn
+
+    def add(self, design):
+        # See comment in Entry for why the -
+        entry = SearchResultsEntry(design, -self._value_fn(design))
+        if len(self._best_results_heap) < self._top_n_to_keep:
+            heapq.heappush(self._best_results_heap, entry)
+        else:
+            heapq.heappushpop(self._best_results_heap, entry)
+        self._all_objective_values.append(-entry.objective_value)
+
+    def best(self):
+        return [e.design
+                for e in sorted(self._best_results_heap, key=lambda e: -e.objective_value)]
+
+    def all_objective_values(self):
+        return self._all_objective_values
 
 
 def _random_search(design: Design, valid: np.typing.NDArray, rng: np.random.Generator):
@@ -42,31 +78,50 @@ def _random_search(design: Design, valid: np.typing.NDArray, rng: np.random.Gene
         design.vox[spot] = 0
 
 
-def search_design_random(goal: Goal, rng: Optional[np.random.Generator] = None) -> Design:
-    if rng is None:
-        rng = np.random.default_rng()
+def objective_value(design: Design, masks: Masks,
+                    face_weight:float = 2.5, interior_weight:float = 1.0) -> float:
+    """Returns a lower-is-better objective value."""
+    return (face_weight * design.vox[masks.faces].sum() +
+            interior_weight * design.vox[masks.interior].sum())
 
-    starting_design = goal.create_base_design()
-    masks = Masks(goal.size)
 
-    design = copy.deepcopy(starting_design)
+class SearchStrategy(enum.Enum):
+    RANDOM = enum.auto()
+    RANDOM_FACE_FIRST = enum.auto()
+
+
+def _search_random(design: Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, ~masks.edges, rng)
 
-    return design
-
-def search_design_random_face_first(
-        goal: Goal, rng: Optional[np.random.Generator] = None) -> Design:
-    if rng is None:
-        rng = np.random.default_rng()
-
-    starting_design = goal.create_base_design()
-    masks = Masks(goal.size)
-
-    design = copy.deepcopy(starting_design)
+def _search_random_face_first(
+        design: Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, masks.faces, rng)
     _random_search(design, masks.interior, rng)
 
-    print("hi")
-    return design
+def search(goal: Goal,
+           strategy: Strategy,
+           num_iterations: int,
+           top_n: int,
+           rng: Optional[np.random.Generator] = None) -> SearchResults:
+    if strategy == SearchStrategy.RANDOM:
+        search_fn = _search_random
+    elif strategy == SearchStrategy.RANDOM_FACE_FIRST:
+        search_fn = _search_random_face_first
+    else:
+        raise ValueError(f"Strategy not known {strategy}")
 
-#def objective_value(design
+    if rng is None:
+        rng = np.random.default_rng()
+
+    starting_design = goal.create_base_design()
+    masks = Masks(goal.size)
+    obj_fn = functools.partial(objective_value, masks=masks)
+
+    results = SearchResults(top_n, obj_fn)
+
+    for _ in range(num_iterations):
+        design = copy.deepcopy(starting_design)
+        search_fn(design, masks, rng)
+        results.add(design)
+
+    return results
