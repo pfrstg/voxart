@@ -85,8 +85,7 @@ def random_goal(rng):
     goal.add_frame()
     return goal
 
-@pytest.mark.parametrize("strategy", [voxart.SearchStrategy.RANDOM,
-                                      voxart.SearchStrategy.RANDOM_FACE_FIRST])
+@pytest.mark.parametrize("strategy", ["random", "random_face_first"])
 def test_search_design_random(random_goal, strategy):
     results = voxart.search(random_goal, strategy, 10, 3)
     assert len(results.best()) == 3

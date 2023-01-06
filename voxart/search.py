@@ -6,7 +6,6 @@ from typing import Callable
 
 import copy
 from dataclasses import dataclass, field
-import enum
 import functools
 import heapq
 import itertools
@@ -25,6 +24,7 @@ class Masks:
             self.edges[tuple(indices)] = True
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
+        print("foo4")
 
 
 @dataclass(order=True)
@@ -84,12 +84,6 @@ def objective_value(design: Design, masks: Masks,
     return (face_weight * design.vox[masks.faces].sum() +
             interior_weight * design.vox[masks.interior].sum())
 
-
-class SearchStrategy(enum.Enum):
-    RANDOM = enum.auto()
-    RANDOM_FACE_FIRST = enum.auto()
-
-
 def _search_random(design: Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, ~masks.edges, rng)
 
@@ -99,13 +93,14 @@ def _search_random_face_first(
     _random_search(design, masks.interior, rng)
 
 def search(goal: Goal,
-           strategy: Strategy,
+           strategy: string,
            num_iterations: int,
            top_n: int,
            rng: Optional[np.random.Generator] = None) -> SearchResults:
-    if strategy == SearchStrategy.RANDOM:
+    print("bar1")
+    if strategy == "random":
         search_fn = _search_random
-    elif strategy == SearchStrategy.RANDOM_FACE_FIRST:
+    elif strategy == "random_face_first":
         search_fn = _search_random_face_first
     else:
         raise ValueError(f"Strategy not known {strategy}")
