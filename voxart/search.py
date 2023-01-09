@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Optional
 
 import copy
 from dataclasses import dataclass, field
@@ -11,6 +11,7 @@ import heapq
 import itertools
 import numpy as np
 
+import voxart
 
 class Masks:
     def __init__(self, size: int):
@@ -31,13 +32,13 @@ class Masks:
 class SearchResultsEntry:
     # Note that we are using lower is better objective values, but because
     # we use heapq which is also lower is better, we have to invert this value
-    design: Design = field(compare=False)
+    design: voxart.Design = field(compare=False)
     objective_value: float
 
 class SearchResults:
     """Maintains state about the entire search process for a design."""
 
-    def __init__(self, top_n: int, value_fn: Callable[[Design], float]):
+    def __init__(self, top_n: int, value_fn: Callable[[voxart.Design], float]):
         self._top_n_to_keep = top_n
         self._best_results_heap = []
         self._all_objective_values = []
@@ -60,7 +61,7 @@ class SearchResults:
         return self._all_objective_values
 
 
-def _random_search(design: Design, valid: np.typing.NDArray, rng: np.random.Generator):
+def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.random.Generator):
     """Performs a random search of removable pieces.
 
     valid is a boolean array where True means the piece shoud lbe considered
@@ -78,22 +79,22 @@ def _random_search(design: Design, valid: np.typing.NDArray, rng: np.random.Gene
         design.vox[spot] = 0
 
 
-def objective_value(design: Design, masks: Masks,
+def objective_value(design: voxart.Design, masks: Masks,
                     face_weight:float = 2.5, interior_weight:float = 1.0) -> float:
     """Returns a lower-is-better objective value."""
     return (face_weight * design.vox[masks.faces].sum() +
             interior_weight * design.vox[masks.interior].sum())
 
-def _search_random(design: Design, masks: Masks, rng: np.random.Generator):
+def _search_random(design: voxart.Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, ~masks.edges, rng)
 
 def _search_random_face_first(
-        design: Design, masks: Masks, rng: np.random.Generator):
+        design: voxart.Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, masks.faces, rng)
     _random_search(design, masks.interior, rng)
 
-def search(goal: Goal,
-           strategy: string,
+def search(goal: voxart.Goal,
+           strategy: str,
            num_iterations: int,
            top_n: int,
            rng: Optional[np.random.Generator] = None) -> SearchResults:
