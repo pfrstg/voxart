@@ -27,6 +27,11 @@ class Design:
     def from_size(size) -> Design:
         return Design(np.zeros((size, size, size)))
 
+    def __eq__(self, other):
+        if self._vox.shape != other._vox.shape:
+            return False
+        return np.all(self._vox == other._vox)
+
     @property
     def size(self) -> int:
         return self._vox.shape[0]
@@ -116,6 +121,11 @@ class Goal:
             raise ValueError(f"Goals needs arrays of the same shape, "
                              f"got {arr0.shape} {arr1.shape} {arr2.shape}")
         return Goal(np.stack([arr0, arr1, arr2]))
+
+    def __eq__(self, other):
+        if self._goals.shape != other._goals.shape:
+            return False
+        return np.all(self._goals == other._goals)
 
     @property
     def size(self) -> int:

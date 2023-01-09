@@ -13,6 +13,25 @@ def test_design_figs():
     design.projections_fig()
     design.slices_fig()
 
+def test_design_equality():
+    design_same0 = voxart.Design.from_size(3)
+    design_same0.vox[0, 1, 2] = 1
+    design_same1 = voxart.Design.from_size(3)
+    design_same1.vox[0, 1, 2] = 1
+    design_diff = voxart.Design.from_size(3)
+    design_diff.vox[1, 1, 1] = 1
+
+    assert design_same0 == design_same1
+    assert not design_same0 != design_same1
+    assert not design_same0 == design_diff
+    assert design_same0 != design_diff
+
+def test_design_diff_sizes_not_equal():
+    design0 = voxart.Design(np.ones([3, 3, 3]))
+    design1 = voxart.Design(np.ones([4, 4, 4]))
+
+    assert design0 != design1
+
 def test_goal_from_size():
     goal = voxart.Goal.from_size(4)
     assert goal.size == 4
@@ -26,6 +45,30 @@ def test_goal_from_arrays():
     np.testing.assert_array_equal(goal.goal(0), [[1, 1], [1, 1]])
     np.testing.assert_array_equal(goal.goal(1), [[0, 0], [1, 1]])
     np.testing.assert_array_equal(goal.goal(2), [[1, 0], [0, 0]])
+
+def test_goal_equality():
+    arr0 = np.zeros([3, 3])
+    arr0[0, 0] = 1
+    arr1 = np.zeros([3, 3])
+    arr1[1, 1] = 1
+    arr2 = np.zeros([3, 3])
+    arr2[2, 2] = 1
+    goal_same0 = voxart.Goal.from_arrays(arr0, arr1, arr2)
+    goal_same1 = voxart.Goal.from_arrays(arr0, arr1, arr2)
+    # Note that different order is still different even though it is conceptually the same!
+    goal_diff0 = voxart.Goal.from_arrays(arr2, arr1, arr0)
+    goal_diff1 = voxart.Goal.from_arrays(arr2, arr2, arr2)
+
+    assert goal_same0 == goal_same1
+    assert not goal_same0 != goal_same1
+    assert not goal_same0 == goal_diff0
+    assert goal_same0 != goal_diff0
+    assert not goal_same0 == goal_diff1
+    assert goal_same0 != goal_diff1
+
+def test_goal_diff_sizes_not_equal():
+    assert voxart.Goal.from_size(3) == voxart.Goal.from_size(3)
+    assert voxart.Goal.from_size(3) != voxart.Goal.from_size(4)
 
 def test_goal_add_frame():
     goal = voxart.Goal.from_size(4)
