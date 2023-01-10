@@ -32,6 +32,9 @@ class Design:
             return False
         return np.all(self._vox == other._vox)
 
+    def __hash__(self):
+        return hash(self._vox.tobytes())
+
     @property
     def size(self) -> int:
         return self._vox.shape[0]
@@ -126,6 +129,9 @@ class Goal:
         if self._goals.shape != other._goals.shape:
             return False
         return np.all(self._goals == other._goals)
+
+    def __hash__(self):
+        return hash(self._goals.tobytes())
 
     @property
     def size(self) -> int:
