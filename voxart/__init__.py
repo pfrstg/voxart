@@ -145,11 +145,15 @@ class Goal:
         self._goals[:, :, (0, -1)] = 1
 
     def rotations(self) -> Iterator[Goal]:
-        # TODO: maybe I should be smart and not generate equivalent figures
+        seen = set()
         for arr1_rot, arr2_rot in itertools.product(range(4), range(4)):
-            yield Goal.from_arrays(self._goals[0, :, :],
-                                   np.rot90(self._goals[1, :, :], k=arr1_rot),
-                                   np.rot90(self._goals[2, :, :], k=arr2_rot))
+            goal = Goal.from_arrays(self._goals[0, :, :],
+                                    np.rot90(self._goals[1, :, :], k=arr1_rot),
+                                    np.rot90(self._goals[2, :, :], k=arr2_rot))
+            old_len = len(seen)
+            seen.add(goal)
+            if len(seen) > old_len:
+                yield goal
 
     def create_base_design(self) -> Design:
         design = Design.from_size(self._goals.shape[1])
