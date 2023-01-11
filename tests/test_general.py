@@ -62,9 +62,16 @@ def random_goal(size, rng):
 
 @pytest.mark.parametrize("size", [3, 5, 10, 15])
 @pytest.mark.parametrize("seed", [100, 200, 300])
-def test_design_find_removable(size, seed):
+def test_design_find_removable_from_goal(size, seed):
     rng = np.random.default_rng(seed)
     design = random_goal(size, rng).create_base_design()
+    assert np.all(design.find_removable() == design.find_removable_slow())
+
+@pytest.mark.parametrize("size", [3, 5, 10, 15])
+@pytest.mark.parametrize("seed", [100, 200, 300])
+def test_design_find_removable(size, seed):
+    rng = np.random.default_rng(seed)
+    design = voxart.Design(rng.choice(a=[0, 1], p=[0.7, 0.3], size=(size, size, size)))
     assert np.all(design.find_removable() == design.find_removable_slow())
 
 def test_goal_from_size():

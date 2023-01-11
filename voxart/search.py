@@ -66,7 +66,7 @@ def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.rand
     valid is a boolean array where True means the piece should be considered
     """
     while True:
-        removable = design.find_removable_slow() & valid
+        removable = design.find_removable() & valid
         if np.sum(removable) == 0:
             break
         removable_indices = np.where(removable)
