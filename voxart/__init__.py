@@ -73,6 +73,14 @@ class Design:
                 out[x, y, z] = True
         return out
 
+    def find_removable(self) -> np.typing.NDArray:
+        """Finds all voxels that can be removed without changing projections.
+        """
+        sums = [np.expand_dims(np.sum(self._vox, axis=axis), axis=axis)
+                for axis in range(3)]
+        min_array = np.minimum(sums[0], np.minimum(sums[1], sums[2]))
+        return min_array > 1
+
     def projections_fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):

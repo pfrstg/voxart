@@ -63,7 +63,7 @@ class SearchResults:
 def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.random.Generator):
     """Performs a random search of removable pieces.
 
-    valid is a boolean array where True means the piece shoud lbe considered
+    valid is a boolean array where True means the piece should be considered
     """
     while True:
         removable = design.find_removable_slow() & valid

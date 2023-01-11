@@ -52,6 +52,21 @@ def test_design_hash():
     s.add(design_diff)
     assert len(s) == 2
 
+def random_goal(size, rng):
+    def one_view():
+        return rng.choice(a=[0, 1], p=[0.7, 0.3], size=(size, size))
+    goal = voxart.Goal.from_arrays(
+        one_view(), one_view(), one_view())
+    goal.add_frame()
+    return goal
+
+@pytest.mark.parametrize("size", [3, 5, 10, 15])
+@pytest.mark.parametrize("seed", [100, 200, 300])
+def test_design_find_removable(size, seed):
+    rng = np.random.default_rng(seed)
+    design = random_goal(size, rng).create_base_design()
+    assert np.all(design.find_removable() == design.find_removable_slow())
+
 def test_goal_from_size():
     goal = voxart.Goal.from_size(4)
     assert goal.size == 4

@@ -87,13 +87,20 @@ def random_goal(rng):
 
 @pytest.mark.parametrize("strategy", ["random", "random_face_first"])
 def test_search_design_random(random_goal, strategy):
-    results = voxart.search(random_goal, strategy, 10, 3)
+    num_alternate_forms = len(list(random_goal.alternate_forms()))
+    results = voxart.search(random_goal, strategy, 2, 3)
     assert len(results.best()) == 3
-    assert len(results.all_objective_values()) == 10
+    assert len(results.all_objective_values()) == 2 * num_alternate_forms
     best = results.best()[0]
-    np.testing.assert_array_equal(random_goal.goal(0), best.projection(0))
-    np.testing.assert_array_equal(random_goal.goal(1), best.projection(1))
-    np.testing.assert_array_equal(random_goal.goal(2), best.projection(2))
+    # We're going to do a fairly weak check here because of the rotations and
+    # flips the actual goal can change.
+    # TODO: once we label the results we can revisit this test
+    #np.testing.assert_array_equal(random_goal.goal(0), best.projection(0))
+    #np.testing.assert_array_equal(random_goal.goal(1), best.projection(1))
+    #np.testing.assert_array_equal(random_goal.goal(2), best.projection(2))
+    assert random_goal.goal(0).sum() == best.projection(0).sum()
+    assert random_goal.goal(1).sum() == best.projection(1).sum()
+    assert random_goal.goal(2).sum() == best.projection(2).sum()
 
 def test_objective_value():
     # This has 4 edges, 2 faces, 1 interior
