@@ -144,12 +144,27 @@ class Goal:
         self._goals[:, (0, -1), :] = 1
         self._goals[:, :, (0, -1)] = 1
 
-    def rotations(self) -> Iterator[Goal]:
+    def alternate_forms(self, include_flips: bool=True) -> Iterator[Goal]:
+        """Produce alternate forms that produce equivalent projectiosn.
+
+        include_flips is just an argument for testing, should not be used in practive
+        """
         seen = set()
-        for arr1_rot, arr2_rot in itertools.product(range(4), range(4)):
-            goal = Goal.from_arrays(self._goals[0, :, :],
-                                    np.rot90(self._goals[1, :, :], k=arr1_rot),
-                                    np.rot90(self._goals[2, :, :], k=arr2_rot))
+        if include_flips:
+            flips = [False, True]
+        else:
+            flips = [False]
+        for arr1_flip, arr1_rot, arr2_flip, arr2_rot in itertools.product(
+                flips,  range(4), flips, range(4)):
+            arr1 = self._goals[1, :, :]
+            arr2 = self._goals[2, :, :]
+            if arr1_flip:
+                arr1 = np.flip(arr1, axis=0)
+            if arr2_flip:
+                arr2 = np.flip(arr2, axis=0)
+            arr1 = np.rot90(arr1, k=arr1_rot)
+            arr2 = np.rot90(arr2, k=arr2_rot)
+            goal = Goal.from_arrays(self._goals[0, :, :], arr1, arr2)
             old_len = len(seen)
             seen.add(goal)
             if len(seen) > old_len:

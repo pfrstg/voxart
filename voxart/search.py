@@ -25,7 +25,6 @@ class Masks:
             self.edges[tuple(indices)] = True
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
-        print("foo4")
 
 
 @dataclass(order=True)
@@ -98,7 +97,6 @@ def search(goal: voxart.Goal,
            num_iterations: int,
            top_n: int,
            rng: Optional[np.random.Generator] = None) -> SearchResults:
-    print("bar1")
     if strategy == "random":
         search_fn = _search_random
     elif strategy == "random_face_first":
@@ -109,15 +107,17 @@ def search(goal: voxart.Goal,
     if rng is None:
         rng = np.random.default_rng()
 
-    starting_design = goal.create_base_design()
     masks = Masks(goal.size)
     obj_fn = functools.partial(objective_value, masks=masks)
 
     results = SearchResults(top_n, obj_fn)
 
-    for _ in range(num_iterations):
-        design = copy.deepcopy(starting_design)
-        search_fn(design, masks, rng)
-        results.add(design)
+    for form_idx, goal_form in enumerate(goal.alternate_forms()):
+        print(f"Starting goal form {form_idx}")
+        starting_design = goal_form.create_base_design()
+        for _ in range(num_iterations):
+            design = copy.deepcopy(starting_design)
+            search_fn(design, masks, rng)
+            results.add(design)
 
     return results

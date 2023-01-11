@@ -1,6 +1,8 @@
 # Copyright 2023, Patrick Riley, github: pfrstg
 
 import numpy as np
+import pytest
+
 import voxart
 
 def test_empty_design():
@@ -130,7 +132,7 @@ def test_goal_fig():
     goal.add_frame()
     goal.fig()
 
-def test_goal_rotations_no_symmetries():
+def test_goal_alternate_forms_no_symmetries_no_flips():
     goal = voxart.Goal.from_arrays(
         [[1, 0],
          [0, 0]],
@@ -138,49 +140,49 @@ def test_goal_rotations_no_symmetries():
          [0, 0]],
         [[1, 1],
          [0, 1]])
-    rotations = list(goal.rotations())
-    assert len(rotations) == 16
+    forms = list(goal.alternate_forms(include_flips=False))
+    assert len(forms) == 16
     # Goal 0 is always the same
-    for r in rotations:
-        np.testing.assert_array_equal(r.goal(0),
+    for g in forms:
+        np.testing.assert_array_equal(g.goal(0),
                                       [[1, 0],
                                        [0, 0]])
     # Goal 1 comes in blocks of 4
-    for r in rotations[0:4]:
-        np.testing.assert_array_equal(r.goal(1),
+    for g in forms[0:4]:
+        np.testing.assert_array_equal(g.goal(1),
                                       [[1, 1],
                                        [0, 0]])
-    for r in rotations[4:8]:
-        np.testing.assert_array_equal(r.goal(1),
+    for g in forms[4:8]:
+        np.testing.assert_array_equal(g.goal(1),
                                       [[1, 0],
                                        [1, 0]])
-    for r in rotations[8:12]:
-        np.testing.assert_array_equal(r.goal(1),
+    for g in forms[8:12]:
+        np.testing.assert_array_equal(g.goal(1),
                                       [[0, 0],
                                        [1, 1]])
-    for r in rotations[12:16]:
-        np.testing.assert_array_equal(r.goal(1),
+    for g in forms[12:16]:
+        np.testing.assert_array_equal(g.goal(1),
                                       [[0, 1],
                                        [0, 1]])
     # Goal 2 switches every time
-    for r in rotations[0:16:4]:
-        np.testing.assert_array_equal(r.goal(2),
+    for g in forms[0:16:4]:
+        np.testing.assert_array_equal(g.goal(2),
                                       [[1, 1],
                                        [0, 1]])
-    for r in rotations[1:16:4]:
-        np.testing.assert_array_equal(r.goal(2),
+    for g in forms[1:16:4]:
+        np.testing.assert_array_equal(g.goal(2),
                                       [[1, 1],
                                        [1, 0]])
-    for r in rotations[2:16:4]:
-        np.testing.assert_array_equal(r.goal(2),
+    for g in forms[2:16:4]:
+        np.testing.assert_array_equal(g.goal(2),
                                       [[1, 0],
                                        [1, 1]])
-    for r in rotations[3:16:4]:
-        np.testing.assert_array_equal(r.goal(2),
+    for g in forms[3:16:4]:
+        np.testing.assert_array_equal(g.goal(2),
                                       [[0, 1],
                                        [1, 1]])
 
-def test_goal_rotations_many_symmetries():
+def test_goal_alternate_forms_many_symmetries():
     goal = voxart.Goal.from_arrays(
         [[1, 0],
          [0, 0]],
@@ -188,25 +190,85 @@ def test_goal_rotations_many_symmetries():
          [0, 1]],
         [[1, 1],
          [1, 1]])
-    rotations = list(goal.rotations())
-    assert len(rotations) == 2
+    forms = list(goal.alternate_forms())
+    assert len(forms) == 2
     # Goal 0 is always the same
-    for r in rotations:
-        np.testing.assert_array_equal(r.goal(0),
+    for g in forms:
+        np.testing.assert_array_equal(g.goal(0),
                                       [[1, 0],
                                        [0, 0]])
     # Goal 1 has two forms
-    np.testing.assert_array_equal(rotations[0].goal(1),
+    np.testing.assert_array_equal(forms[0].goal(1),
                                   [[1, 0],
                                    [0, 1]])
-    np.testing.assert_array_equal(rotations[1].goal(1),
+    np.testing.assert_array_equal(forms[1].goal(1),
                                   [[0, 1],
                                    [1, 0]])
     # Goal 2 is always the same
-    for r in rotations:
-        np.testing.assert_array_equal(r.goal(2),
+    for g in forms:
+        np.testing.assert_array_equal(g.goal(2),
                                       [[1, 1],
                                        [1, 1]])
+
+@pytest.mark.parametrize("flip_axis", [1, 2])
+def test_goal_alternate_forms_flips(flip_axis):
+    axis0 = [[1, 0, 0],
+             [0, 0, 0],
+             [0, 0, 0]]
+    symmetric = [[1, 0, 1],
+                 [0, 0, 0],
+                 [1, 0, 1]]
+    flippable = [[1, 1, 1],
+                 [1, 0, 0],
+                 [0, 0, 0]]
+    if flip_axis == 1:
+        goal = voxart.Goal.from_arrays(axis0, flippable, symmetric)
+    elif flip_axis == 2:
+        goal = voxart.Goal.from_arrays(axis0, symmetric, flippable)
+    else:
+        raise ValueError()
+    forms = list(goal.alternate_forms())
+    assert len(forms) == 8
+    # Goal 0 is always the same
+    for g in forms:
+        np.testing.assert_array_equal(g.goal(0), axis0)
+    non_flip_axis = (flip_axis % 2) + 1
+    # Non flipped axis is the same
+    for g in forms:
+        np.testing.assert_array_equal(g.goal(non_flip_axis), symmetric)
+    # Flipped axis has 8 forms we enumerate
+    np.testing.assert_array_equal(forms[0].goal(flip_axis),
+                                  [[1, 1, 1],
+                                   [1, 0, 0],
+                                   [0, 0, 0]])
+    np.testing.assert_array_equal(forms[1].goal(flip_axis),
+                                  [[1, 0, 0],
+                                   [1, 0, 0],
+                                   [1, 1, 0]])
+    np.testing.assert_array_equal(forms[2].goal(flip_axis),
+                                  [[0, 0, 0],
+                                   [0, 0, 1],
+                                   [1, 1, 1]])
+    np.testing.assert_array_equal(forms[3].goal(flip_axis),
+                                  [[0, 1, 1],
+                                   [0, 0, 1],
+                                   [0, 0, 1]])
+    np.testing.assert_array_equal(forms[4].goal(flip_axis),
+                                  [[0, 0, 0],
+                                   [1, 0, 0],
+                                   [1, 1, 1]])
+    np.testing.assert_array_equal(forms[5].goal(flip_axis),
+                                  [[0, 0, 1],
+                                   [0, 0, 1],
+                                   [0, 1, 1]])
+    np.testing.assert_array_equal(forms[6].goal(flip_axis),
+                                  [[1, 1, 1],
+                                   [0, 0, 1],
+                                   [0, 0, 0]])
+    np.testing.assert_array_equal(forms[7].goal(flip_axis),
+                                  [[1, 1, 0],
+                                   [1, 0, 0],
+                                   [1, 0, 0]])
 
 def test_goal_create_base_design():
     xface = np.array(
