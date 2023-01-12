@@ -27,6 +27,13 @@ class Design:
     def from_size(size) -> Design:
         return Design(np.zeros((size, size, size)))
 
+    @staticmethod
+    def from_npy(fn) -> Design:
+        return Design(np.load(fn))
+
+    def save_npy(self, fn: str):
+        np.save(fn, self._vox, allow_pickle=False)
+
     def __eq__(self, other):
         if self._vox.shape != other._vox.shape:
             return False

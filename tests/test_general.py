@@ -1,6 +1,7 @@
 # Copyright 2023, Patrick Riley, github: pfrstg
 
 import numpy as np
+import os
 import pytest
 
 import voxart
@@ -51,6 +52,15 @@ def test_design_hash():
     assert len(s) == 1
     s.add(design_diff)
     assert len(s) == 2
+
+def test_design_save_load(tmp_path):
+    fn = os.path.join(tmp_path, "design.npy")
+    design = voxart.Design.from_size(3)
+    design.vox[1, 1, 1] = 1
+    design.vox[2, 2, 2] = 1
+    design.save_npy(fn)
+    got = voxart.Design.from_npy(fn)
+    assert got == design
 
 def random_goal(size, rng):
     def one_view():

@@ -124,9 +124,10 @@ def search(goal: voxart.Goal,
     for form_idx, goal_form in enumerate(goal.alternate_forms()):
         print(f"Starting goal form {form_idx}")
         starting_design = goal_form.create_base_design()
+        results.add((form_idx,True), starting_design)
         for _ in range(num_iterations):
             design = copy.deepcopy(starting_design)
             search_fn(design, masks, rng)
-            results.add((form_idx,), design)
+            results.add((form_idx,False), design)
 
     return results
