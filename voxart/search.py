@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable, Iterable, List, Optional, Tuple
 
 import copy
 from dataclasses import dataclass, field
@@ -10,6 +10,7 @@ import functools
 import heapq
 import itertools
 import numpy as np
+import pandas as pd
 
 import voxart
 
@@ -31,6 +32,7 @@ class Masks:
 class SearchResultsEntry:
     # Note that we are using lower is better objective values, but because
     # we use heapq which is also lower is better, we have to invert this value
+    label: Tuple  = field(compare=False)
     design: voxart.Design = field(compare=False)
     objective_value: float
 
@@ -43,21 +45,28 @@ class SearchResults:
         self._all_objective_values = []
         self._value_fn = value_fn
 
-    def add(self, design):
+    def add(self, label: Tuple, design: voxart.Design):
+        """Adds a given design result
+
+        label is a tuple with arbitrary values that will be returned later in best and
+         all_objective_values
+
+        """
         # See comment in Entry for why the -
-        entry = SearchResultsEntry(design, -self._value_fn(design))
+        entry = SearchResultsEntry(label, design, -self._value_fn(design))
         if len(self._best_results_heap) < self._top_n_to_keep:
             heapq.heappush(self._best_results_heap, entry)
         else:
             heapq.heappushpop(self._best_results_heap, entry)
-        self._all_objective_values.append(-entry.objective_value)
+        self._all_objective_values.append((label, -entry.objective_value))
 
-    def best(self):
-        return [e.design
+    def best(self) -> List[Tuple[Tuple, voxart.Design]]:
+        return [(e.label, e.design)
                 for e in sorted(self._best_results_heap, key=lambda e: -e.objective_value)]
 
-    def all_objective_values(self):
-        return self._all_objective_values
+    def all_objective_values(self, label_names: List[str]) -> pd.DataFrame:
+        return pd.DataFrame(((*l, v) for (l, v) in self._all_objective_values),
+                            columns=label_names + ["objective_value"])
 
 
 def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.random.Generator):
@@ -118,6 +127,6 @@ def search(goal: voxart.Goal,
         for _ in range(num_iterations):
             design = copy.deepcopy(starting_design)
             search_fn(design, masks, rng)
-            results.add(design)
+            results.add((form_idx,), design)
 
     return results
