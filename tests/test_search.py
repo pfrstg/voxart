@@ -79,7 +79,7 @@ def rng():
 @pytest.fixture
 def random_goal(rng):
     def one_view():
-        return rng.choice(a=[0, 1], p=[0.7, 0.3], size=(7, 7))
+        return rng.choice(a=[voxart.EMPTY, voxart.FILLED], p=[0.7, 0.3], size=(7, 7))
     goal = voxart.Goal.from_arrays(
         one_view(), one_view(), one_view())
     goal.add_frame()
@@ -106,15 +106,15 @@ def test_search_design_random(random_goal, strategy):
 
 def test_objective_value():
     # This has 4 edges, 2 faces, 1 interior
-    design = voxart.Design([[[1, 1, 1],
-                             [1, 0, 1],
-                             [1, 1, 1]],
+    design = voxart.Design([[[2, 2, 2],
+                             [2, 0, 2],
+                             [2, 2, 2]],
                             [[0, 0 ,0],
-                             [1, 1, 1],
+                             [2, 2, 2],
                              [0, 0, 0]],
-                            [[1, 1, 1],
-                             [1, 0, 1],
-                             [1, 1, 1]]])
+                            [[2, 2, 2],
+                             [2, 0, 2],
+                             [2, 2, 2]]])
 
     masks = voxart.Masks(3)
     assert voxart.objective_value(design, masks, face_weight=10, interior_weight=1) == 21

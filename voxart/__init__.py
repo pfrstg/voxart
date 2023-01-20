@@ -13,7 +13,12 @@ import matplotlib.pyplot as plt
 from .search import *
 
 
+EMPTY: int = 0
+CONNECTOR: int = 1
+FILLED: int = 2
+
 class Design:
+
     def __init__(self, vox: np.typing.ArrayLike):
         vox = np.asarray(vox)
         if len(vox.shape) != 3:
@@ -74,27 +79,27 @@ class Design:
         for x, y, z in itertools.product(range(self.size), range(self.size), range(self.size)):
             if not self._vox[x, y, z]:
                 continue
-            if (np.sum(self._vox[x, y, :]) > 1 and
-                np.sum(self._vox[:, y, z]) > 1 and
-                np.sum(self._vox[x, :, z]) > 1):
+            if (np.sum(self._vox[x, y, :] == FILLED) > 1 and
+                np.sum(self._vox[:, y, z] == FILLED) > 1 and
+                np.sum(self._vox[x, :, z] == FILLED) > 1):
                 out[x, y, z] = True
         return out
 
     def find_removable(self) -> np.typing.NDArray:
         """Finds all voxels that can be removed without changing projections.
         """
-        sums = [np.expand_dims(np.sum(self._vox, axis=axis), axis=axis)
+        sums = [np.expand_dims(np.sum(self._vox == FILLED, axis=axis), axis=axis)
                 for axis in range(3)]
         min_array = np.minimum(sums[0], np.minimum(sums[1], sums[2]))
         # You have to and this with the original array because the sums across all axes can be
         # be larger than 1 even if that voxel itself is not set.
-        return np.logical_and(min_array > 1, self._vox)
+        return np.logical_and(min_array > 1, self._vox == FILLED)
 
     def projections_fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
             #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
-            ax.imshow(self.projection(axis), cmap="binary", interpolation="none", vmin=0, vmax=1)
+            ax.imshow(self.projection(axis), cmap="Greys", interpolation="none", vmin=0, vmax=2)
             ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
             ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
             ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
@@ -108,7 +113,7 @@ class Design:
             for i, slc in enumerate(self.slices(axis)):
                 ax = axes[axis, i]
                 #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
-                ax.imshow(slc, cmap="binary", interpolation="none", vmin=0, vmax=1)
+                ax.imshow(slc, cmap="Greys", interpolation="none", vmin=0, vmax=2)
                 ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
                 ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
                 ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
@@ -128,7 +133,7 @@ class Goal:
 
     @staticmethod
     def from_size(size: int) -> Goal:
-        return Goal(np.zeros((3, size, size)))
+        return Goal(np.full((3, size, size), EMPTY))
 
     @staticmethod
     def from_arrays(arr0: np.typing.ArrayLike,
@@ -158,8 +163,8 @@ class Goal:
         return self._goals[goal_idx, : , :]
 
     def add_frame(self):
-        self._goals[:, (0, -1), :] = 1
-        self._goals[:, :, (0, -1)] = 1
+        self._goals[:, (0, -1), :] = FILLED
+        self._goals[:, :, (0, -1)] = FILLED
 
     def alternate_forms(self, include_flips: bool=True) -> Iterator[Goal]:
         """Produce alternate forms that produce equivalent projectiosn.
@@ -189,12 +194,12 @@ class Goal:
 
     def create_base_design(self) -> Design:
         design = Design.from_size(self._goals.shape[1])
-        design.vox[:, :, :] = 1
+        design.vox[:, :, :] = FILLED
         for goal_idx in range(3):
             indices = list(np.where(self._goals[goal_idx] == 0))
             # This seems wrong -- I have to know the end idx to make this slice?
             indices.insert(goal_idx, slice(self._goals.shape[1]))
-            design.vox[tuple(indices)] = 0
+            design.vox[tuple(indices)] = EMPTY
 
         return design
 
@@ -203,7 +208,7 @@ class Goal:
         for goal_idx, ax in enumerate(axes):
             #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
             ax.imshow(self._goals[goal_idx, :, :], cmap="binary", interpolation="none",
-                      vmin=0, vmax=1)
+                      vmin=0, vmax=2)
             ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
             ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
             ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))

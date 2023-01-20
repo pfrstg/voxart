@@ -90,8 +90,8 @@ def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.rand
 def objective_value(design: voxart.Design, masks: Masks,
                     face_weight:float = 2.5, interior_weight:float = 1.0) -> float:
     """Returns a lower-is-better objective value."""
-    return (face_weight * design.vox[masks.faces].sum() +
-            interior_weight * design.vox[masks.interior].sum())
+    return (face_weight * (design.vox[masks.faces] == voxart.FILLED).sum() +
+            interior_weight * (design.vox[masks.interior] == voxart.FILLED).sum())
 
 def _search_random(design: voxart.Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, ~masks.edges, rng)
