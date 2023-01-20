@@ -28,6 +28,29 @@ class Masks:
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
 
 
+class ObjectiveFunction:
+    """A lower-is-better objective value."""
+    def __init__(self, face_weight:float = 2.5, interior_weight:float = 1.0, masks: Masks = None):
+        """Creates ObjectiveFunction.
+
+        If you do not provide masks at creation, you need to call set_masks before
+        calling this.
+        """
+        self.face_weight = face_weight
+        self.interior_weight = 1.0
+        self.masks = masks
+
+    def set_masks(self, masks: Masks):
+        self.masks = masks
+
+    def __call__(self, design: Design) -> float:
+        if not self.masks:
+            raise ValueError("Must set masks before calling ObjectiveFunction")
+
+        return (self.face_weight * (design.vox[self.masks.faces] == voxart.FILLED).sum() +
+                self.interior_weight * (design.vox[self.masks.interior] == voxart.FILLED).sum())
+
+
 @dataclass(order=True)
 class SearchResultsEntry:
     # Note that we are using lower is better objective values, but because
@@ -39,11 +62,11 @@ class SearchResultsEntry:
 class SearchResults:
     """Maintains state about the entire search process for a design."""
 
-    def __init__(self, top_n: int, value_fn: Callable[[voxart.Design], float]):
+    def __init__(self, top_n: int, obj_func: ObjectiveFunction):
         self._top_n_to_keep = top_n
         self._best_results_heap = []
         self._all_objective_values = []
-        self._value_fn = value_fn
+        self._obj_func = obj_func
 
     def add(self, label: Tuple, design: voxart.Design):
         """Adds a given design result
@@ -53,7 +76,7 @@ class SearchResults:
 
         """
         # See comment in Entry for why the -
-        entry = SearchResultsEntry(label, design, -self._value_fn(design))
+        entry = SearchResultsEntry(label, design, -self._obj_func(design))
         if len(self._best_results_heap) < self._top_n_to_keep:
             heapq.heappush(self._best_results_heap, entry)
         else:
@@ -87,12 +110,6 @@ def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.rand
         design.vox[spot] = 0
 
 
-def objective_value(design: voxart.Design, masks: Masks,
-                    face_weight:float = 2.5, interior_weight:float = 1.0) -> float:
-    """Returns a lower-is-better objective value."""
-    return (face_weight * (design.vox[masks.faces] == voxart.FILLED).sum() +
-            interior_weight * (design.vox[masks.interior] == voxart.FILLED).sum())
-
 def _search_random(design: voxart.Design, masks: Masks, rng: np.random.Generator):
     _random_search(design, ~masks.edges, rng)
 
@@ -105,6 +122,7 @@ def search(goal: voxart.Goal,
            strategy: str,
            num_iterations: int,
            top_n: int,
+           obj_func: ObjectiveFunction = None,
            rng: Optional[np.random.Generator] = None) -> SearchResults:
     if strategy == "random":
         search_fn = _search_random
@@ -117,9 +135,11 @@ def search(goal: voxart.Goal,
         rng = np.random.default_rng()
 
     masks = Masks(goal.size)
-    obj_fn = functools.partial(objective_value, masks=masks)
+    if obj_func is None:
+        obj_func = ObjectiveFunction()
+    obj_func.set_masks(masks)
 
-    results = SearchResults(top_n, obj_fn)
+    results = SearchResults(top_n, obj_func)
 
     for form_idx, goal_form in enumerate(goal.alternate_forms()):
         print(f"Starting goal form {form_idx}")

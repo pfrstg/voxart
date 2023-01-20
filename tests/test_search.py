@@ -104,7 +104,8 @@ def test_search_design_random(random_goal, strategy):
     assert random_goal.goal(1).sum() == best_design.projection(1).sum()
     assert random_goal.goal(2).sum() == best_design.projection(2).sum()
 
-def test_objective_value():
+
+def test_objective_function():
     # This has 4 edges, 2 faces, 1 interior
     design = voxart.Design([[[2, 2, 2],
                              [2, 0, 2],
@@ -117,5 +118,11 @@ def test_objective_value():
                              [2, 2, 2]]])
 
     masks = voxart.Masks(3)
-    assert voxart.objective_value(design, masks, face_weight=10, interior_weight=1) == 21
-    assert voxart.objective_value(design, masks, face_weight=1, interior_weight=10) == 12
+    func0 = voxart.ObjectiveFunction(face_weight=10, interior_weight=1)
+    with pytest.raises(ValueError):
+        func0(design)
+    func0.set_masks(masks)
+    assert func0(design) == 21
+
+    func1 = voxart.ObjectiveFunction(face_weight=1, interior_weight=10, masks=masks)
+    func1(design) == 12
