@@ -126,3 +126,28 @@ def test_objective_function():
 
     func1 = voxart.ObjectiveFunction(face_weight=1, interior_weight=10, masks=masks)
     func1(design) == 12
+
+def test_get_neighbors_middle():
+    vox = [3, 6, 9]
+    assert np.all(np.stack(list(voxart.get_neighbors(vox, 100))) ==
+                  [[2, 6, 9],
+                   [4, 6, 9],
+                   [3, 5, 9],
+                   [3, 7, 9],
+                   [3, 6, 8],
+                   [3, 6, 10]])
+
+
+def test_get_neighbors_zeroedge():
+    vox = [0, 0, 0]
+    assert np.all(np.stack(list(voxart.get_neighbors(vox, 10))) ==
+                  [[1, 0, 0],
+                   [0, 1, 0],
+                   [0, 0, 1]])
+
+def test_get_neighbors_maxedge():
+    vox = [9, 9, 9]
+    assert np.all(np.stack(list(voxart.get_neighbors(vox, 10))) ==
+                  [[8, 9, 9],
+                   [9, 8, 9],
+                   [9, 9, 8]])

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Iterable, Iterator, List, Optional, Tuple
 
 import copy
 from dataclasses import dataclass, field
@@ -30,7 +30,9 @@ class Masks:
 
 class ObjectiveFunction:
     """A lower-is-better objective value."""
-    def __init__(self, face_weight:float = 2.5, interior_weight:float = 1.0, masks: Masks = None):
+    def __init__(self, face_weight:float = 2.5,
+                 interior_weight:float = 1.0,
+                 masks: Optional[Masks] = None):
         """Creates ObjectiveFunction.
 
         If you do not provide masks at creation, you need to call set_masks before
@@ -43,7 +45,7 @@ class ObjectiveFunction:
     def set_masks(self, masks: Masks):
         self.masks = masks
 
-    def __call__(self, design: Design) -> float:
+    def __call__(self, design: voxart.Design) -> float:
         if not self.masks:
             raise ValueError("Must set masks before calling ObjectiveFunction")
 
@@ -122,7 +124,7 @@ def search(goal: voxart.Goal,
            strategy: str,
            num_iterations: int,
            top_n: int,
-           obj_func: ObjectiveFunction = None,
+           obj_func: Optional[ObjectiveFunction] = None,
            rng: Optional[np.random.Generator] = None) -> SearchResults:
     if strategy == "random":
         search_fn = _search_random
@@ -151,3 +153,16 @@ def search(goal: voxart.Goal,
             results.add((form_idx,False), design)
 
     return results
+
+
+def get_neighbors(vox: np.typing.ArrayLike, size: int) -> Iterator[np.typing.NDArray]:
+    vox = np.asarray(vox)
+    if vox.shape != (3,):
+        raise ValueError(f"Only suport 3D neightbors, got shape {vox.shape}")
+    for axis, delta in itertools.product([0, 1, 2], [-1, 1]):
+        newval = vox[axis] + delta
+        if newval <= 0 or newval >= size:
+            continue
+        neighbor = np.copy(vox)
+        neighbor[axis] = newval
+        yield neighbor
