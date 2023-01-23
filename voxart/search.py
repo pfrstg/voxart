@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Iterator, List, Optional, Tuple
+from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import copy
 from dataclasses import dataclass, field
 import functools
 import heapq
 import itertools
+import logging
 import numpy as np
 import pandas as pd
 
 import voxart
 
 class Masks:
-    def __init__(self, size: int):
+    def __init__(self, size_or_design: Union[int, voxart.Design]):
+        if isinstance(size_or_design, voxart.Design):
+            size = size_or_design.size
+        else:
+            size = size_or_design
         self.interior = np.full((size, size, size), False)
         self.interior[1:size-1, 1:size-1, 1:size-1] = True
 
@@ -32,6 +37,7 @@ class ObjectiveFunction:
     """A lower-is-better objective value."""
     def __init__(self, face_weight:float = 2.5,
                  interior_weight:float = 1.0,
+                 connector_weight:float = 0.1,
                  masks: Optional[Masks] = None):
         """Creates ObjectiveFunction.
 
@@ -39,7 +45,8 @@ class ObjectiveFunction:
         calling this.
         """
         self.face_weight = face_weight
-        self.interior_weight = 1.0
+        self.interior_weight = interior_weight
+        self.connector_weight = connector_weight
         self.masks = masks
 
     def set_masks(self, masks: Masks):
@@ -50,7 +57,8 @@ class ObjectiveFunction:
             raise ValueError("Must set masks before calling ObjectiveFunction")
 
         return (self.face_weight * (design.vox[self.masks.faces] == voxart.FILLED).sum() +
-                self.interior_weight * (design.vox[self.masks.interior] == voxart.FILLED).sum())
+                self.interior_weight * (design.vox[self.masks.interior] == voxart.FILLED).sum() +
+                self.connector_weight * (design.vox == voxart.CONNECTOR).sum())
 
 
 @dataclass(order=True)
@@ -161,8 +169,114 @@ def get_neighbors(vox: np.typing.ArrayLike, size: int) -> Iterator[np.typing.NDA
         raise ValueError(f"Only suport 3D neightbors, got shape {vox.shape}")
     for axis, delta in itertools.product([0, 1, 2], [-1, 1]):
         newval = vox[axis] + delta
-        if newval <= 0 or newval >= size:
+        if newval < 0 or newval >= size:
             continue
         neighbor = np.copy(vox)
         neighbor[axis] = newval
         yield neighbor
+
+
+@dataclass(order=True)
+class _PathEntry:
+    vox: Tuple[int, int, int] = field(compare=False)
+    parent: Optional[Tuple[int, int, int]] = field(compare=False)
+    distance: int
+
+def get_shortest_path_to_targets(
+        design: voxart.Design,
+        masks: Masks,
+        targets: Set[Tuple[int, int, int]],
+        rng: Optional[np.random.Generator] = None) -> Tuple[
+            Tuple[int, int, int], int, List[Tuple[int, int, int]]]:
+    """Given a set of targets, find the shortest path to the edge of the design.
+
+    If there are multiple targets with shortest paths or multiple shortest paths,
+    a random one will be returned.
+    I don't know if it is uniformly random or not. Probably not.
+    We use the rng to randomly pick an edge to start from.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    edge_vox = np.where(masks.edges)
+    starting_idx = rng.integers(len(edge_vox[0]))
+    starting_point = (edge_vox[0][starting_idx],
+                      edge_vox[1][starting_idx],
+                      edge_vox[2][starting_idx])
+
+    frontier = [_PathEntry(starting_point, None, 0)]
+    visited = {}
+    while True:
+        entry = heapq.heappop(frontier)
+
+        if entry.vox in visited:
+            continue
+
+        if entry.vox in targets:
+            # Yay, we found a shortest path!
+            path = []
+            path_parent = entry.parent
+            while (path_parent is not None and
+                   not masks.edges[path_parent]):
+                path.append(path_parent)
+                path_parent = visited[path_parent]
+            return entry.vox, entry.distance, path
+
+        #print(f"Visiting {entry}")
+        visited[entry.vox] = entry.parent
+        for neighbor in get_neighbors(entry.vox, design.size):
+            neighbor = tuple(neighbor)
+            dist = entry.distance
+            if design.vox[neighbor] == voxart.EMPTY:
+                dist += 1
+            next_entry = _PathEntry(neighbor, entry.vox, dist)
+            #print(f"\tInserting {next_entry}")
+            heapq.heappush(frontier, next_entry)
+
+def add_path_as_connectors(design: voxart.Design, path: List[Tuple[int, int, int]]):
+    for vox in path:
+        if design.vox[vox] == voxart.EMPTY:
+            design.vox[vox] = voxart.CONNECTOR
+
+def search_connectors(starting_design: voxart.Design,
+                      num_iterations: int,
+                      top_n: int,
+                      obj_func: Optional[ObjectiveFunction] = None,
+                      rng: Optional[np.random.Generator] = None) -> SearchResults:
+    if rng is None:
+        rng = np.random.default_rng()
+
+    masks = Masks(starting_design)
+    if obj_func is None:
+        obj_func = ObjectiveFunction()
+    obj_func.set_masks(masks)
+
+    results = SearchResults(top_n, obj_func)
+    for iter_idx in range(num_iterations):
+        design = copy.deepcopy(starting_design)
+
+        pending_vox = set((x, y, z)
+                          for x, y, z in zip(*np.where((design.vox == voxart.FILLED) &
+                                                       ~masks.edges)))
+        while pending_vox:
+            # TODO: Is convering to list all the time someting I shoudl avoid?
+            if len(pending_vox) < 5:
+                active_subset = pending_vox
+            else:
+                active_subset_idx = set(np.random.choice(len(pending_vox),
+                                                         size=len(pending_vox) // 2,
+                                                         replace=False))
+                assert len(active_subset_idx) == len(pending_vox) // 2
+                active_subset = {v for i, v in enumerate(pending_vox)
+                                 if i in active_subset_idx}
+            target, distance, path = get_shortest_path_to_targets(
+                design, masks, active_subset, rng)
+            assert target in pending_vox
+            add_path_as_connectors(design, path)
+            pending_vox.remove(target)
+
+        print(f"search_connectors: completed {iter_idx}")
+        results.add((iter_idx,design.num_connectors()), design)
+
+
+    return results

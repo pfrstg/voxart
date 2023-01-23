@@ -69,6 +69,12 @@ class Design:
         for i in range(self.size):
             yield self.slice(axis, i)
 
+    def num_filled(self) -> int:
+        return np.sum(self._vox == FILLED)
+
+    def num_connectors(self) -> int:
+        return np.sum(self._vox == CONNECTOR)
+
     def find_removable_slow(self) -> np.typing.NDArray:
         """Finds all voxels that can be removed without changing projections.
 

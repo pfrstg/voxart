@@ -127,6 +127,24 @@ def test_objective_function():
     func1 = voxart.ObjectiveFunction(face_weight=1, interior_weight=10, masks=masks)
     func1(design) == 12
 
+def test_objective_function_connector():
+    # This has 2 face, 1 interior, 3 connectors
+    design = voxart.Design([[[0, 0, 0],
+                             [1, 2, 0],
+                             [0, 0, 0]],
+                            [[0, 0 ,0],
+                             [1, 2, 0],
+                             [0, 0, 0]],
+                            [[0, 0, 0],
+                             [1, 2, 0],
+                             [0, 0, 0]]])
+
+    func = voxart.ObjectiveFunction(face_weight=100,
+                                    interior_weight=10,
+                                    connector_weight=1,
+                                    masks=voxart.Masks(design))
+    assert func(design) == 213
+
 def test_get_neighbors_middle():
     vox = [3, 6, 9]
     assert np.all(np.stack(list(voxart.get_neighbors(vox, 100))) ==
@@ -151,3 +169,83 @@ def test_get_neighbors_maxedge():
                   [[8, 9, 9],
                    [9, 8, 9],
                    [9, 9, 8]])
+
+def test_get_neighbors_nearedge():
+    vox = [1, 3, 4]
+    assert np.all(np.stack(list(voxart.get_neighbors(vox, 5))) ==
+                  [[0, 3, 4],
+                   [2, 3, 4],
+                   [1, 2, 4],
+                   [1, 4, 4],
+                   [1, 3, 3]])
+
+@pytest.fixture
+def empty_design_5():
+    goal = voxart.Goal.from_size(5)
+    goal.add_frame()
+    return goal.create_base_design()
+
+def test_get_shortest_path_to_targets_single(empty_design_5, rng):
+    target, distance, path = voxart.get_shortest_path_to_targets(empty_design_5,
+                                                                 voxart.Masks(empty_design_5),
+                                                                 {(1, 1, 1)},
+                                                                 rng)
+    assert target == (1, 1, 1)
+    assert distance == 2
+    assert len(path), 2
+
+def test_get_shortest_path_to_targets_two(empty_design_5, rng):
+    target, distance, path = voxart.get_shortest_path_to_targets(empty_design_5,
+                                                                 voxart.Masks(empty_design_5),
+                                                                 {(1, 1, 1),
+                                                                  (2, 2, 2)},
+                                                                 rng)
+    assert target == (1, 1, 1)
+    assert distance == 2
+    assert len(path), 2
+
+def test_get_shortest_path_to_targets_zero_dist(empty_design_5, rng):
+    target, distance, path = voxart.get_shortest_path_to_targets(empty_design_5,
+                                                                 voxart.Masks(empty_design_5),
+                                                                 {(2, 0, 0)},
+                                                                 rng)
+    assert target == (2, 0, 0)
+    assert distance == 0
+    assert len(path) == 0
+
+def test_add_path_as_connectors():
+    design = voxart.Design.from_size(3)
+    design.vox[1, 0, 0] = voxart.FILLED
+    design.vox[1, 1, 1] = voxart.CONNECTOR
+
+    assert design.num_filled() == 1
+    assert design.num_connectors() == 1
+
+    voxart.add_path_as_connectors(design,
+                                  [(1, 0, 0),
+                                   (1, 1, 0),
+                                   (1, 1, 1),
+                                   (1, 1, 2)])
+
+    assert design.num_filled() == 1
+    assert design.num_connectors() == 3
+
+    assert design.vox[1, 0, 0] == voxart.FILLED
+    assert design.vox[1, 1, 0] == voxart.CONNECTOR
+    assert design.vox[1, 1, 1] == voxart.CONNECTOR
+    assert design.vox[1, 1, 2] == voxart.CONNECTOR
+
+def test_search_connectors(empty_design_5, rng):
+    design = empty_design_5
+    design.vox[1, 1, 1] = voxart.FILLED
+    design.vox[2, 2, 2] = voxart.FILLED
+
+    # 44 is the frame and 2 of the filled pieces
+    assert design.num_filled() == 46
+    assert design.num_connectors() == 0
+
+    results = voxart.search_connectors(design, 5, 1, rng=rng)
+    _, got_design = results.best()[0]
+
+    assert got_design.num_filled() == 46
+    assert got_design.num_connectors() == 3
