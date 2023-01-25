@@ -17,14 +17,20 @@ EMPTY: int = 0
 CONNECTOR: int = 1
 FILLED: int = 2
 
-class Design:
 
+class Design:
     def __init__(self, voxels: np.typing.ArrayLike):
         voxels = np.asarray(voxels)
         if len(voxels.shape) != 3:
-            raise ValueError(f"Voxels for design must have 3D shape, got {voxels.shape}")
-        if not (voxels.shape[0] == voxels.shape[1] and voxels.shape[1] == voxels.shape[2]):
-            raise ValueError(f"Voxels for design must have equal dims, got {voxels.shape}")
+            raise ValueError(
+                f"Voxels for design must have 3D shape, got {voxels.shape}"
+            )
+        if not (
+            voxels.shape[0] == voxels.shape[1] and voxels.shape[1] == voxels.shape[2]
+        ):
+            raise ValueError(
+                f"Voxels for design must have equal dims, got {voxels.shape}"
+            )
 
         self._voxels = np.copy(voxels.astype(int))
 
@@ -82,20 +88,25 @@ class Design:
         of summing along axis that can probably be done once. But I need to test this.
         """
         out = np.full((self.size, self.size, self.size), False)
-        for x, y, z in itertools.product(range(self.size), range(self.size), range(self.size)):
+        for x, y, z in itertools.product(
+            range(self.size), range(self.size), range(self.size)
+        ):
             if not self._voxels[x, y, z]:
                 continue
-            if (np.sum(self._voxels[x, y, :] == FILLED) > 1 and
-                np.sum(self._voxels[:, y, z] == FILLED) > 1 and
-                np.sum(self._voxels[x, :, z] == FILLED) > 1):
+            if (
+                np.sum(self._voxels[x, y, :] == FILLED) > 1
+                and np.sum(self._voxels[:, y, z] == FILLED) > 1
+                and np.sum(self._voxels[x, :, z] == FILLED) > 1
+            ):
                 out[x, y, z] = True
         return out
 
     def find_removable(self) -> np.typing.NDArray:
-        """Finds all voxels that can be removed without changing projections.
-        """
-        sums = [np.expand_dims(np.sum(self._voxels == FILLED, axis=axis), axis=axis)
-                for axis in range(3)]
+        """Finds all voxels that can be removed without changing projections."""
+        sums = [
+            np.expand_dims(np.sum(self._voxels == FILLED, axis=axis), axis=axis)
+            for axis in range(3)
+        ]
         min_array = np.minimum(sums[0], np.minimum(sums[1], sums[2]))
         # You have to and this with the original array because the sums across all axes can be
         # be larger than 1 even if that voxel itself is not set.
@@ -104,8 +115,21 @@ class Design:
     def projections_fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
-            ax.imshow(self.projection(axis), cmap="Greys", interpolation="none", vmin=0, vmax=2)
-            ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
+            ax.imshow(
+                self.projection(axis),
+                cmap="Greys",
+                interpolation="none",
+                vmin=0,
+                vmax=2,
+            )
+            ax.tick_params(
+                axis="both",
+                which="both",
+                bottom=False,
+                left=False,
+                labelbottom=False,
+                labelleft=False,
+            )
             ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
             ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
             ax.grid(visible=True)
@@ -118,7 +142,14 @@ class Design:
             for i, slc in enumerate(self.slices(axis)):
                 ax = axes[axis, i]
                 ax.imshow(slc, cmap="Greys", interpolation="none", vmin=0, vmax=2)
-                ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
+                ax.tick_params(
+                    axis="both",
+                    which="both",
+                    bottom=False,
+                    left=False,
+                    labelbottom=False,
+                    labelleft=False,
+                )
                 ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
                 ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
                 ax.grid(visible=True)
@@ -130,12 +161,16 @@ class Goal:
     def __init__(self, arr: np.typing.ArrayLike):
         arr = np.asarray(arr)
         if arr.shape[0] != 3:
-            raise ValueError(f"Goals expect first dimension to have size 3, got {arr.shape}")
+            raise ValueError(
+                f"Goals expect first dimension to have size 3, got {arr.shape}"
+            )
         if arr.shape[1] != arr.shape[2]:
             raise ValueError(f"Goals expect square dimensions, got {arr.shape}")
         if (np.sum(arr == voxart.EMPTY) + np.sum(arr == voxart.FILLED)) != arr.size:
-            raise ValueError("Goals must contain only EMPTY and FILLED, got:" +
-                             str(arr[(arr != EMPTY) & (arr != FILLED)]))
+            raise ValueError(
+                "Goals must contain only EMPTY and FILLED, got:"
+                + str(arr[(arr != EMPTY) & (arr != FILLED)])
+            )
         self._goals = np.copy(arr)
 
     @staticmethod
@@ -143,15 +178,17 @@ class Goal:
         return Goal(np.full((3, size, size), EMPTY))
 
     @staticmethod
-    def from_arrays(arr0: np.typing.ArrayLike,
-                    arr1: np.typing.ArrayLike,
-                    arr2: np.typing.ArrayLike) -> Goal:
+    def from_arrays(
+        arr0: np.typing.ArrayLike, arr1: np.typing.ArrayLike, arr2: np.typing.ArrayLike
+    ) -> Goal:
         arr0 = np.asarray(arr0)
         arr1 = np.asarray(arr1)
         arr2 = np.asarray(arr2)
         if arr0.shape != arr1.shape or arr1.shape != arr2.shape:
-            raise ValueError(f"Goals needs arrays of the same shape, "
-                             f"got {arr0.shape} {arr1.shape} {arr2.shape}")
+            raise ValueError(
+                f"Goals needs arrays of the same shape, "
+                f"got {arr0.shape} {arr1.shape} {arr2.shape}"
+            )
         return Goal(np.stack([arr0, arr1, arr2]))
 
     @staticmethod
@@ -176,20 +213,20 @@ class Goal:
         return self._goals.shape[1]
 
     def goal(self, goal_idx: int) -> np.typing.NDArray:
-        return self._goals[goal_idx, : , :]
+        return self._goals[goal_idx, :, :]
 
     def to_image(self):
         sz = self.size
         out = np.reshape(self._goals, (3 * sz, sz)).astype(np.uint8)
         out[out == EMPTY] = 255
         out[out == FILLED] = 0
-        return Image.fromarray(out, mode='L')
+        return Image.fromarray(out, mode="L")
 
     def add_frame(self):
         self._goals[:, (0, -1), :] = FILLED
         self._goals[:, :, (0, -1)] = FILLED
 
-    def alternate_forms(self, include_flips: bool=True) -> Iterator[Goal]:
+    def alternate_forms(self, include_flips: bool = True) -> Iterator[Goal]:
         """Produce alternate forms that produce equivalent projectiosn.
 
         include_flips is just an argument for testing, should not be used in practive
@@ -200,7 +237,8 @@ class Goal:
         else:
             flips = [False]
         for arr1_flip, arr1_rot, arr2_flip, arr2_rot in itertools.product(
-                flips,  range(4), flips, range(4)):
+            flips, range(4), flips, range(4)
+        ):
             arr1 = self._goals[1, :, :]
             arr2 = self._goals[2, :, :]
             if arr1_flip:
@@ -229,9 +267,21 @@ class Goal:
     def fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for goal_idx, ax in enumerate(axes):
-            ax.imshow(self._goals[goal_idx, :, :], cmap="binary", interpolation="none",
-                      vmin=0, vmax=2)
-            ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
+            ax.imshow(
+                self._goals[goal_idx, :, :],
+                cmap="binary",
+                interpolation="none",
+                vmin=0,
+                vmax=2,
+            )
+            ax.tick_params(
+                axis="both",
+                which="both",
+                bottom=False,
+                left=False,
+                labelbottom=False,
+                labelleft=False,
+            )
             ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
             ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
             ax.grid(visible=True)
