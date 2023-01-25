@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Iterator, Optional, Tuple
-
 import copy
 import itertools
+from typing import Iterator, Optional, Tuple
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from PIL import Image
-import matplotlib.pyplot as plt
 
 from .search import *
-
 
 EMPTY: int = 0
 CONNECTOR: int = 1

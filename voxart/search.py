@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union
-
 import copy
-from dataclasses import dataclass, field
 import functools
 import heapq
 import itertools
 import logging
+from dataclasses import dataclass, field
+from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union
+
 import numpy as np
 import pandas as pd
 
 import voxart
+
 
 class Masks:
     def __init__(self, size_or_design: Union[int, voxart.Design]):

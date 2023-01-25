@@ -2,7 +2,9 @@
 
 import numpy as np
 import pytest
+
 import voxart
+
 
 def test_masks():
     masks = voxart.Masks(4)

@@ -1,11 +1,13 @@
 # Copyright 2023, Patrick Riley, github: pfrstg
 
-import numpy as np
 import os
-from PIL import Image
+
+import numpy as np
 import pytest
+from PIL import Image
 
 import voxart
+
 
 def test_empty_design():
     design = voxart.Design.from_size(4)
