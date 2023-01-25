@@ -19,14 +19,14 @@ FILLED: int = 2
 
 class Design:
 
-    def __init__(self, vox: np.typing.ArrayLike):
-        vox = np.asarray(vox)
-        if len(vox.shape) != 3:
-            raise ValueError(f"Voxels for design must have 3D shape, got {vox.shape}")
-        if not (vox.shape[0] == vox.shape[1] and vox.shape[1] == vox.shape[2]):
-            raise ValueError(f"Voxels for design must have equal dims, got {vox.shape}")
+    def __init__(self, voxels: np.typing.ArrayLike):
+        voxels = np.asarray(voxels)
+        if len(voxels.shape) != 3:
+            raise ValueError(f"Voxels for design must have 3D shape, got {voxels.shape}")
+        if not (voxels.shape[0] == voxels.shape[1] and voxels.shape[1] == voxels.shape[2]):
+            raise ValueError(f"Voxels for design must have equal dims, got {voxels.shape}")
 
-        self._vox = np.copy(vox.astype(int))
+        self._voxels = np.copy(voxels.astype(int))
 
     @staticmethod
     def from_size(size) -> Design:
@@ -37,43 +37,43 @@ class Design:
         return Design(np.load(fn))
 
     def save_npy(self, fn: str):
-        np.save(fn, self._vox, allow_pickle=False)
+        np.save(fn, self._voxels, allow_pickle=False)
 
     def __eq__(self, other):
-        if self._vox.shape != other._vox.shape:
+        if self._voxels.shape != other._voxels.shape:
             return False
-        return np.all(self._vox == other._vox)
+        return np.all(self._voxels == other._voxels)
 
     def __hash__(self):
-        return hash(self._vox.tobytes())
+        return hash(self._voxels.tobytes())
 
     @property
     def size(self) -> int:
-        return self._vox.shape[0]
+        return self._voxels.shape[0]
 
     @property
-    def vox(self) -> np.typing.NDArray:
-        return self._vox
+    def voxels(self) -> np.typing.NDArray:
+        return self._voxels
 
     def projection(self, axis: int) -> np.typing.NDArray:
-        return self._vox.max(axis)
+        return self._voxels.max(axis)
 
     def projections(self) -> Iterator[np.typing.NDArray]:
         for axis in range(3):
             yield self.projection(axis)
 
     def slice(self, axis: int, idx: int) -> np.typing.NDArray:
-        return np.take(self._vox, idx, axis=axis)
+        return np.take(self._voxels, idx, axis=axis)
 
     def slices(self, axis: int) -> Iterator[np.typing.NDArray]:
         for i in range(self.size):
             yield self.slice(axis, i)
 
     def num_filled(self) -> int:
-        return np.sum(self._vox == FILLED)
+        return np.sum(self._voxels == FILLED)
 
     def num_connectors(self) -> int:
-        return np.sum(self._vox == CONNECTOR)
+        return np.sum(self._voxels == CONNECTOR)
 
     def find_removable_slow(self) -> np.typing.NDArray:
         """Finds all voxels that can be removed without changing projections.
@@ -83,28 +83,27 @@ class Design:
         """
         out = np.full((self.size, self.size, self.size), False)
         for x, y, z in itertools.product(range(self.size), range(self.size), range(self.size)):
-            if not self._vox[x, y, z]:
+            if not self._voxels[x, y, z]:
                 continue
-            if (np.sum(self._vox[x, y, :] == FILLED) > 1 and
-                np.sum(self._vox[:, y, z] == FILLED) > 1 and
-                np.sum(self._vox[x, :, z] == FILLED) > 1):
+            if (np.sum(self._voxels[x, y, :] == FILLED) > 1 and
+                np.sum(self._voxels[:, y, z] == FILLED) > 1 and
+                np.sum(self._voxels[x, :, z] == FILLED) > 1):
                 out[x, y, z] = True
         return out
 
     def find_removable(self) -> np.typing.NDArray:
         """Finds all voxels that can be removed without changing projections.
         """
-        sums = [np.expand_dims(np.sum(self._vox == FILLED, axis=axis), axis=axis)
+        sums = [np.expand_dims(np.sum(self._voxels == FILLED, axis=axis), axis=axis)
                 for axis in range(3)]
         min_array = np.minimum(sums[0], np.minimum(sums[1], sums[2]))
         # You have to and this with the original array because the sums across all axes can be
         # be larger than 1 even if that voxel itself is not set.
-        return np.logical_and(min_array > 1, self._vox == FILLED)
+        return np.logical_and(min_array > 1, self._voxels == FILLED)
 
     def projections_fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
-            #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
             ax.imshow(self.projection(axis), cmap="Greys", interpolation="none", vmin=0, vmax=2)
             ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
             ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
@@ -118,7 +117,6 @@ class Design:
         for axis in range(3):
             for i, slc in enumerate(self.slices(axis)):
                 ax = axes[axis, i]
-                #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
                 ax.imshow(slc, cmap="Greys", interpolation="none", vmin=0, vmax=2)
                 ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)
                 ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
@@ -200,19 +198,18 @@ class Goal:
 
     def create_base_design(self) -> Design:
         design = Design.from_size(self._goals.shape[1])
-        design.vox[:, :, :] = FILLED
+        design.voxels[:, :, :] = FILLED
         for goal_idx in range(3):
             indices = list(np.where(self._goals[goal_idx] == 0))
             # This seems wrong -- I have to know the end idx to make this slice?
             indices.insert(goal_idx, slice(self._goals.shape[1]))
-            design.vox[tuple(indices)] = EMPTY
+            design.voxels[tuple(indices)] = EMPTY
 
         return design
 
     def fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for goal_idx, ax in enumerate(axes):
-            #ax.imshow(vox[i, :, :], cmap="binary", interpolation="none")
             ax.imshow(self._goals[goal_idx, :, :], cmap="binary", interpolation="none",
                       vmin=0, vmax=2)
             ax.tick_params(axis="both", which="both", bottom=False, left=False, labelbottom=False, labelleft=False)

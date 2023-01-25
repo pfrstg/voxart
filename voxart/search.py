@@ -56,9 +56,9 @@ class ObjectiveFunction:
         if not self.masks:
             raise ValueError("Must set masks before calling ObjectiveFunction")
 
-        return (self.face_weight * (design.vox[self.masks.faces] == voxart.FILLED).sum() +
-                self.interior_weight * (design.vox[self.masks.interior] == voxart.FILLED).sum() +
-                self.connector_weight * (design.vox == voxart.CONNECTOR).sum())
+        return (self.face_weight * (design.voxels[self.masks.faces] == voxart.FILLED).sum() +
+                self.interior_weight * (design.voxels[self.masks.interior] == voxart.FILLED).sum() +
+                self.connector_weight * (design.voxels == voxart.CONNECTOR).sum())
 
 
 @dataclass(order=True)
@@ -117,7 +117,7 @@ def _random_search(design: voxart.Design, valid: np.typing.NDArray, rng: np.rand
                 removable_indices[1][spot_idx],
                 removable_indices[2][spot_idx])
         #print(f"Removing {spot}")
-        design.vox[spot] = 0
+        design.voxels[spot] = 0
 
 
 def _search_random(design: voxart.Design, masks: Masks, rng: np.random.Generator):
@@ -227,7 +227,7 @@ def get_shortest_path_to_targets(
         for neighbor in get_neighbors(entry.vox, design.size):
             neighbor = tuple(neighbor)
             dist = entry.distance
-            if design.vox[neighbor] == voxart.EMPTY:
+            if design.voxels[neighbor] == voxart.EMPTY:
                 dist += 1
             next_entry = _PathEntry(neighbor, entry.vox, dist)
             #print(f"\tInserting {next_entry}")
@@ -235,8 +235,8 @@ def get_shortest_path_to_targets(
 
 def add_path_as_connectors(design: voxart.Design, path: List[Tuple[int, int, int]]):
     for vox in path:
-        if design.vox[vox] == voxart.EMPTY:
-            design.vox[vox] = voxart.CONNECTOR
+        if design.voxels[vox] == voxart.EMPTY:
+            design.voxels[vox] = voxart.CONNECTOR
 
 def search_connectors(starting_design: voxart.Design,
                       num_iterations: int,
@@ -256,7 +256,7 @@ def search_connectors(starting_design: voxart.Design,
         design = copy.deepcopy(starting_design)
 
         pending_vox = set((x, y, z)
-                          for x, y, z in zip(*np.where((design.vox == voxart.FILLED) &
+                          for x, y, z in zip(*np.where((design.voxels == voxart.FILLED) &
                                                        ~masks.edges)))
         while pending_vox:
             # TODO: Is convering to list all the time someting I shoudl avoid?

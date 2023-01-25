@@ -215,8 +215,8 @@ def test_get_shortest_path_to_targets_zero_dist(empty_design_5, rng):
 
 def test_add_path_as_connectors():
     design = voxart.Design.from_size(3)
-    design.vox[1, 0, 0] = voxart.FILLED
-    design.vox[1, 1, 1] = voxart.CONNECTOR
+    design.voxels[1, 0, 0] = voxart.FILLED
+    design.voxels[1, 1, 1] = voxart.CONNECTOR
 
     assert design.num_filled() == 1
     assert design.num_connectors() == 1
@@ -230,15 +230,15 @@ def test_add_path_as_connectors():
     assert design.num_filled() == 1
     assert design.num_connectors() == 3
 
-    assert design.vox[1, 0, 0] == voxart.FILLED
-    assert design.vox[1, 1, 0] == voxart.CONNECTOR
-    assert design.vox[1, 1, 1] == voxart.CONNECTOR
-    assert design.vox[1, 1, 2] == voxart.CONNECTOR
+    assert design.voxels[1, 0, 0] == voxart.FILLED
+    assert design.voxels[1, 1, 0] == voxart.CONNECTOR
+    assert design.voxels[1, 1, 1] == voxart.CONNECTOR
+    assert design.voxels[1, 1, 2] == voxart.CONNECTOR
 
 def test_search_connectors(empty_design_5, rng):
     design = empty_design_5
-    design.vox[1, 1, 1] = voxart.FILLED
-    design.vox[2, 2, 2] = voxart.FILLED
+    design.voxels[1, 1, 1] = voxart.FILLED
+    design.voxels[2, 2, 2] = voxart.FILLED
 
     # 44 is the frame and 2 of the filled pieces
     assert design.num_filled() == 46

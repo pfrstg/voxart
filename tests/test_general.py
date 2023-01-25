@@ -8,7 +8,7 @@ import voxart
 
 def test_empty_design():
     design = voxart.Design.from_size(4)
-    assert design.vox.shape == (4, 4, 4)
+    assert design.voxels.shape == (4, 4, 4)
 
 def test_design_figs():
     # Only verifies that the code runs, not anything about the output
@@ -18,11 +18,11 @@ def test_design_figs():
 
 def test_design_equality():
     design_same0 = voxart.Design.from_size(3)
-    design_same0.vox[0, 1, 2] = voxart.FILLED
+    design_same0.voxels[0, 1, 2] = voxart.FILLED
     design_same1 = voxart.Design.from_size(3)
-    design_same1.vox[0, 1, 2] = voxart.FILLED
+    design_same1.voxels[0, 1, 2] = voxart.FILLED
     design_diff = voxart.Design.from_size(3)
-    design_diff.vox[1, 1, 1] = voxart.FILLED
+    design_diff.voxels[1, 1, 1] = voxart.FILLED
 
     assert design_same0 == design_same1
     assert not design_same0 != design_same1
@@ -37,11 +37,11 @@ def test_design_diff_sizes_not_equal():
 
 def test_design_hash():
     design_same0 = voxart.Design.from_size(3)
-    design_same0.vox[0, 1, 2] = voxart.FILLED
+    design_same0.voxels[0, 1, 2] = voxart.FILLED
     design_same1 = voxart.Design.from_size(3)
-    design_same1.vox[0, 1, 2] = voxart.FILLED
+    design_same1.voxels[0, 1, 2] = voxart.FILLED
     design_diff = voxart.Design.from_size(3)
-    design_diff.vox[1, 1, 1] = voxart.FILLED
+    design_diff.voxels[1, 1, 1] = voxart.FILLED
 
     assert hash(design_same0) == hash(design_same1)
     assert hash(design_same0) != hash(design_diff)
@@ -56,8 +56,8 @@ def test_design_hash():
 def test_design_save_load(tmp_path):
     fn = os.path.join(tmp_path, "design.npy")
     design = voxart.Design.from_size(3)
-    design.vox[1, 1, 1] = voxart.FILLED
-    design.vox[2, 2, 2] = voxart.FILLED
+    design.voxels[1, 1, 1] = voxart.FILLED
+    design.voxels[2, 2, 2] = voxart.FILLED
     design.save_npy(fn)
     got = voxart.Design.from_npy(fn)
     assert got == design
@@ -317,12 +317,12 @@ def test_goal_create_base_design():
          [2, 2, 2]])
     goal = voxart.Goal.from_arrays(xface, yface, zface)
     design = goal.create_base_design()
-    print(design.vox)
+    print(design.voxels)
     # The x face removes 3 voxesl
     # The yface removes 6 voxels that don't intersect
     # The zface removes 3 voxels, one of which intersects the yface
     # The 2 * is because FILLED is 2
-    assert design.vox.sum() == 2 * (27 - (3 + 6 + 3 - 1))
+    assert design.voxels.sum() == 2 * (27 - (3 + 6 + 3 - 1))
     np.testing.assert_array_equal(design.projection(0), xface)
     np.testing.assert_array_equal(design.projection(1), yface)
     np.testing.assert_array_equal(design.projection(2), zface)
