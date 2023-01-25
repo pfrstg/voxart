@@ -192,7 +192,7 @@ class Goal:
         return Goal(np.stack([arr0, arr1, arr2]))
 
     @staticmethod
-    def from_image(img: Image):
+    def from_image(img: Image.Image):
         arr = np.array(img.convert(mode="L"))
         arr[arr < 128] = FILLED
         arr[arr >= 128] = EMPTY
