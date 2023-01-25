@@ -2,6 +2,7 @@
 
 import numpy as np
 import os
+from PIL import Image
 import pytest
 
 import voxart
@@ -64,7 +65,7 @@ def test_design_save_load(tmp_path):
 
 def random_goal(size, rng):
     def one_view():
-        return rng.choice(a=[0, 1], p=[0.7, 0.3], size=(size, size))
+        return rng.choice(a=[voxart.EMPTY, voxart.FILLED], p=[0.7, 0.3], size=(size, size))
     goal = voxart.Goal.from_arrays(
         one_view(), one_view(), one_view())
     goal.add_frame()
@@ -90,13 +91,13 @@ def test_goal_from_size():
 
 def test_goal_from_arrays():
     goal = voxart.Goal.from_arrays(
-        [[1, 1], [1, 1]],
-        [[0, 0], [1, 1]],
-        [[1, 0], [0, 0]])
+        [[2, 2], [2, 2]],
+        [[0, 0], [2, 2]],
+        [[2, 0], [0, 0]])
     assert goal.size == 2
-    np.testing.assert_array_equal(goal.goal(0), [[1, 1], [1, 1]])
-    np.testing.assert_array_equal(goal.goal(1), [[0, 0], [1, 1]])
-    np.testing.assert_array_equal(goal.goal(2), [[1, 0], [0, 0]])
+    np.testing.assert_array_equal(goal.goal(0), [[2, 2], [2, 2]])
+    np.testing.assert_array_equal(goal.goal(1), [[0, 0], [2, 2]])
+    np.testing.assert_array_equal(goal.goal(2), [[2, 0], [0, 0]])
 
 def test_goal_equality():
     arr0 = np.zeros([3, 3])
@@ -142,6 +143,16 @@ def test_goal_hash():
     assert len(s) == 1
     s.add(goal_diff)
     assert len(s) == 2
+
+def test_goal_image_save_load(tmp_path):
+    goal = voxart.Goal.from_arrays(
+        [[2, 2], [2, 2]],
+        [[0, 0], [2, 2]],
+        [[2, 0], [0, 0]])
+    fn = os.path.join(tmp_path, "goal.png")
+    goal.to_image().save(fn)
+    got = voxart.Goal.from_image(Image.open(fn))
+    assert goal == got
 
 def test_goal_add_frame():
     goal = voxart.Goal.from_size(4)

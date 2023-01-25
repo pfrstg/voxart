@@ -8,6 +8,7 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
+from PIL import Image
 import matplotlib.pyplot as plt
 
 from .search import *
@@ -133,6 +134,9 @@ class Goal:
             raise ValueError(f"Goals expect first dimension to have size 3, got {arr.shape}")
         if arr.shape[1] != arr.shape[2]:
             raise ValueError(f"Goals expect square dimensions, got {arr.shape}")
+        if (np.sum(arr == voxart.EMPTY) + np.sum(arr == voxart.FILLED)) != arr.size:
+            raise ValueError("Goals must contain only EMPTY and FILLED, got:" +
+                             str(arr[(arr != EMPTY) & (arr != FILLED)]))
         self._goals = np.copy(arr)
 
     @staticmethod
@@ -151,6 +155,15 @@ class Goal:
                              f"got {arr0.shape} {arr1.shape} {arr2.shape}")
         return Goal(np.stack([arr0, arr1, arr2]))
 
+    @staticmethod
+    def from_image(img: Image):
+        arr = np.array(img.convert(mode="L"))
+        arr[arr < 128] = FILLED
+        arr[arr >= 128] = EMPTY
+
+        sz = arr.shape[1]
+        return voxart.Goal(arr.reshape((3, sz, sz)))
+
     def __eq__(self, other):
         if self._goals.shape != other._goals.shape:
             return False
@@ -165,6 +178,13 @@ class Goal:
 
     def goal(self, goal_idx: int) -> np.typing.NDArray:
         return self._goals[goal_idx, : , :]
+
+    def to_image(self):
+        sz = self.size
+        out = np.reshape(self._goals, (3 * sz, sz)).astype(np.uint8)
+        out[out == EMPTY] = 255
+        out[out == FILLED] = 0
+        return Image.fromarray(out, mode='L')
 
     def add_frame(self):
         self._goals[:, (0, -1), :] = FILLED
