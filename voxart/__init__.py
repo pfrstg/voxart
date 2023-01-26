@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
+from .geometry import *
 from .search import *
 
 EMPTY: int = 0

@@ -1615,6 +1615,22 @@ files = [
 ]
 
 [[package]]
+name = "numpy-stl"
+version = "3.0.0"
+description = "Library to make reading, writing and modifying both binary and ascii STL files easy."
+category = "main"
+optional = false
+python-versions = ">3.6.0"
+files = [
+    {file = "numpy-stl-3.0.0.tar.gz", hash = "sha256:578b78eacb0529ac9aba2f17dcc363d58c7c3c5708710c18f8c1e9965f2e81ac"},
+    {file = "numpy_stl-3.0.0-py3-none-any.whl", hash = "sha256:44d56dec3b409b73f7126089ece859d0213d302e39c2375496e64f6dc574347c"},
+]
+
+[package.dependencies]
+numpy = "*"
+python-utils = ">=3.4.5"
+
+[[package]]
 name = "packaging"
 version = "22.0"
 description = "Core utilities for Python packages"
@@ -2097,6 +2113,23 @@ files = [
     {file = "python-json-logger-2.0.4.tar.gz", hash = "sha256:764d762175f99fcc4630bd4853b09632acb60a6224acb27ce08cd70f0b1b81bd"},
     {file = "python_json_logger-2.0.4-py3-none-any.whl", hash = "sha256:3b03487b14eb9e4f77e4fc2a023358b5394b82fd89cecf5586259baed57d8c6f"},
 ]
+
+[[package]]
+name = "python-utils"
+version = "3.4.5"
+description = "Python Utils is a module with some convenient utilities not included with the standard Python install"
+category = "main"
+optional = false
+python-versions = ">3.6.0"
+files = [
+    {file = "python-utils-3.4.5.tar.gz", hash = "sha256:7e329c427a6d23036cfcc4501638afb31b2ddc8896f25393562833874b8c6e0a"},
+    {file = "python_utils-3.4.5-py2.py3-none-any.whl", hash = "sha256:22990259324eae88faa3389d302861a825dbdd217ab40e3ec701851b3337d592"},
+]
+
+[package.extras]
+docs = ["mock", "python-utils", "sphinx"]
+loguru = ["loguru"]
+tests = ["flake8", "loguru", "pytest", "pytest-asyncio", "pytest-cov", "pytest-mypy", "sphinx", "types-setuptools"]
 
 [[package]]
 name = "pytype"
@@ -2770,4 +2803,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.11"
-content-hash = "d8c6a6a2a784727572e7d66b27234afe51c1e713e25fb7e308d89485d5239fa8"
+content-hash = "9345db3ba9f2e1f06ff4bcea52ef3a3543335eba8ed76676a866c07f957dea0c"
