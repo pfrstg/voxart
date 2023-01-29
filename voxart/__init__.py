@@ -82,6 +82,20 @@ class Design:
     def num_connectors(self) -> int:
         return np.sum(self._voxels == CONNECTOR)
 
+    def add_frame(self, offset: int = 0):
+        if offset == 0:
+            line_slice = slice(None)
+        else:
+            line_slice = slice(offset, -offset)
+        for axis in range(3):
+            for axis_idx in [0, -1]:
+                for indexer in [
+                    [(offset, -1 - offset), line_slice],
+                    [line_slice, (offset, -1 - offset)],
+                ]:
+                    indexer.insert(axis, axis_idx)
+                    self.voxels[tuple(indexer)] = voxart.FILLED
+
     def find_removable_slow(self) -> np.typing.NDArray:
         """Finds all voxels that can be removed without changing projections.
 

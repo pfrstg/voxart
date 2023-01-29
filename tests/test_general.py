@@ -71,6 +71,23 @@ def test_design_save_load(tmp_path):
     assert got == design
 
 
+def test_design_add_frame_offset0():
+    design = voxart.Design.from_size(5)
+    design.add_frame()
+    masks = voxart.Masks(design)
+    assert np.all(design.voxels[masks.edges] == voxart.FILLED)
+    assert np.all(design.voxels[~masks.edges] == voxart.EMPTY)
+
+
+def test_design_add_frame_offset1():
+    design = voxart.Design.from_size(5)
+    design.add_frame(offset=1)
+    masks = voxart.Masks(design)
+    assert np.all(design.voxels[~masks.faces] == voxart.EMPTY)
+    # 8 in the frame on 6 faces
+    assert np.sum(design.voxels == voxart.FILLED) == 8 * 6
+
+
 def random_goal(size, rng):
     def one_view():
         return rng.choice(

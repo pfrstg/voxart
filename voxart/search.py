@@ -34,6 +34,11 @@ class Masks:
             self.edges[tuple(indices)] = True
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
+        self.front_faces = np.full((size, size, size), False)
+        self.front_faces[0, :, :] = True
+        self.front_faces[:, 0, :] = True
+        self.front_faces[:, :, 0] = True
+        self.front_faces &= self.faces
 
 
 class ObjectiveFunction:
@@ -41,9 +46,9 @@ class ObjectiveFunction:
 
     def __init__(
         self,
-        face_weight: float = 2.5,
-        interior_weight: float = 1.0,
-        connector_weight: float = 0.1,
+        face_weight: float = 4.0,
+        interior_weight: float = 3.0,
+        connector_weight: float = 1.0,
         masks: Optional[Masks] = None,
     ):
         """Creates ObjectiveFunction.
@@ -150,6 +155,14 @@ def _search_random_face_first(
     _random_search(design, masks.interior, rng)
 
 
+def _search_random_clear_front(
+    design: voxart.Design, masks: Masks, rng: np.random.Generator
+):
+    design.voxels[masks.front_faces] = voxart.EMPTY
+    _random_search(design, masks.faces, rng)
+    _random_search(design, masks.interior, rng)
+
+
 def search(
     goal: voxart.Goal,
     strategy: str,
@@ -162,6 +175,8 @@ def search(
         search_fn = _search_random
     elif strategy == "random_face_first":
         search_fn = _search_random_face_first
+    elif strategy == "random_clear_front":
+        search_fn = _search_random_clear_front
     else:
         raise ValueError(f"Strategy not known {strategy}")
 

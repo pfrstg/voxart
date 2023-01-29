@@ -69,6 +69,36 @@ def test_masks():
     )
 
     np.testing.assert_array_equal(
+        masks.front_faces,
+        [
+            [
+                [False, False, False, False],
+                [False, True, True, False],
+                [False, True, True, False],
+                [False, False, False, False],
+            ],
+            [
+                [False, True, True, False],
+                [True, False, False, False],
+                [True, False, False, False],
+                [False, False, False, False],
+            ],
+            [
+                [False, True, True, False],
+                [True, False, False, False],
+                [True, False, False, False],
+                [False, False, False, False],
+            ],
+            [
+                [False, False, False, False],
+                [False, False, False, False],
+                [False, False, False, False],
+                [False, False, False, False],
+            ],
+        ],
+    )
+
+    np.testing.assert_array_equal(
         masks.edges,
         [
             [
@@ -114,7 +144,9 @@ def random_goal(rng):
     return goal
 
 
-@pytest.mark.parametrize("strategy", ["random", "random_face_first"])
+@pytest.mark.parametrize(
+    "strategy", ["random", "random_face_first", "random_clear_front"]
+)
 def test_search_design_random(random_goal, strategy):
     num_alternate_forms = len(list(random_goal.alternate_forms()))
     results = voxart.search(random_goal, strategy, 2, 3)
