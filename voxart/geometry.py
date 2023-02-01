@@ -58,8 +58,15 @@ def vox_to_stl(vox: Tuple[int, int, int]):
     return out
 
 
-def design_to_stl(design: voxart.Design):
+def design_to_stl(design: voxart.Design, vox_type: int):
     meshes = []
-    for vox in zip(*np.where(design.voxels == voxart.FILLED)):
+    for vox in zip(*np.where(design.voxels == vox_type)):
         meshes.append(vox_to_stl(vox))
     return stl.mesh.Mesh(np.concatenate([m.data for m in meshes]))
+
+
+def save_stl_pair(design: voxart.Design, file_stem: str):
+    if np.sum(design.voxels == voxart.FILLED):
+        design_to_stl(design, voxart.FILLED).save(file_stem + "_filled.stl")
+    if np.sum(design.voxels == voxart.CONNECTOR):
+        design_to_stl(design, voxart.CONNECTOR).save(file_stem + "_connector.stl")
