@@ -12,6 +12,7 @@ from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from tqdm.notebook import tqdm, trange
 
 import voxart
 
@@ -190,8 +191,11 @@ def search(
 
     results = SearchResults(top_n, obj_func)
 
-    for form_idx, (goal_form, flips) in enumerate(goal.alternate_forms()):
-        print(f"Starting goal form {form_idx} with flips {flips}")
+    goal_forms = list(goal.alternate_forms())
+    pbar = tqdm(goal_forms)
+    for form_idx, (goal_form, flips) in enumerate(goal_forms):
+        pbar.update(1)
+        pbar.set_description(f"Goal form {form_idx} with flips {flips}")
         starting_design = goal_form.create_base_design()
         for axis, flip_val in enumerate(flips):
             if flip_val:
@@ -201,6 +205,7 @@ def search(
             design = copy.deepcopy(starting_design)
             search_fn(design, masks, rng)
             results.add((form_idx, False), design)
+    pbar.close()
 
     return results
 
@@ -300,7 +305,7 @@ def search_connectors(
     obj_func.set_masks(masks)
 
     results = SearchResults(top_n, obj_func)
-    for iter_idx in range(num_iterations):
+    for iter_idx in trange(num_iterations):
         design = copy.deepcopy(starting_design)
 
         pending_vox = set(
@@ -330,7 +335,6 @@ def search_connectors(
             add_path_as_connectors(design, path)
             pending_vox.remove(target)
 
-        print(f"search_connectors: completed {iter_idx}")
         results.add((iter_idx, design.num_connectors()), design)
 
     return results
