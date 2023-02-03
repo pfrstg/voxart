@@ -61,6 +61,16 @@ def test_design_hash():
     assert len(s) == 2
 
 
+def test_design_goal_locations():
+    design = voxart.Design.from_size(3)
+    assert design.goal_locations == [0, 0, 0]
+    design.set_goal_location(1, -1)
+    design.set_goal_location(2, 0)
+    assert design.goal_locations == [0, -1, 0]
+    with pytest.raises(ValueError):
+        design.set_goal_location(0, 42)
+
+
 def test_design_save_load(tmp_path):
     fn = os.path.join(tmp_path, "design.npy")
     design = voxart.Design.from_size(3)
@@ -218,7 +228,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
     forms = list(goal.alternate_forms(include_flips=False))
     assert len(forms) == 16
     # Goal 0 is always the same
-    for g in forms:
+    for g, flips in forms:
+        assert flips[0] == False
         np.testing.assert_array_equal(
             g.goal(0),
             [
@@ -227,7 +238,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
             ],
         )
     # Goal 1 comes in blocks of 4
-    for g in forms[0:4]:
+    for g, flips in forms[0:4]:
+        assert flips[1] == False
         np.testing.assert_array_equal(
             g.goal(1),
             [
@@ -235,7 +247,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
                 [0, 0],
             ],
         )
-    for g in forms[4:8]:
+    for g, flips in forms[4:8]:
+        assert flips[1] == False
         np.testing.assert_array_equal(
             g.goal(1),
             [
@@ -243,7 +256,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
                 [2, 0],
             ],
         )
-    for g in forms[8:12]:
+    for g, flips in forms[8:12]:
+        assert flips[1] == False
         np.testing.assert_array_equal(
             g.goal(1),
             [
@@ -251,7 +265,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
                 [2, 2],
             ],
         )
-    for g in forms[12:16]:
+    for g, flips in forms[12:16]:
+        assert flips[1] == False
         np.testing.assert_array_equal(
             g.goal(1),
             [
@@ -260,7 +275,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
             ],
         )
     # Goal 2 switches every time
-    for g in forms[0:16:4]:
+    for g, flips in forms[0:16:4]:
+        assert flips[2] == False
         np.testing.assert_array_equal(
             g.goal(2),
             [
@@ -268,7 +284,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
                 [0, 2],
             ],
         )
-    for g in forms[1:16:4]:
+    for g, flips in forms[1:16:4]:
+        assert flips[2] == False
         np.testing.assert_array_equal(
             g.goal(2),
             [
@@ -276,7 +293,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
                 [2, 0],
             ],
         )
-    for g in forms[2:16:4]:
+    for g, flips in forms[2:16:4]:
+        assert flips[2] == False
         np.testing.assert_array_equal(
             g.goal(2),
             [
@@ -284,7 +302,8 @@ def test_goal_alternate_forms_no_symmetries_no_flips():
                 [2, 2],
             ],
         )
-    for g in forms[3:16:4]:
+    for g, flips in forms[3:16:4]:
+        assert flips[2] == False
         np.testing.assert_array_equal(
             g.goal(2),
             [
@@ -299,7 +318,8 @@ def test_goal_alternate_forms_many_symmetries():
     forms = list(goal.alternate_forms())
     assert len(forms) == 2
     # Goal 0 is always the same
-    for g in forms:
+    for g, flips in forms:
+        assert flips[0] == False
         np.testing.assert_array_equal(
             g.goal(0),
             [
@@ -308,22 +328,27 @@ def test_goal_alternate_forms_many_symmetries():
             ],
         )
     # Goal 1 has two forms
+    goal, flips = forms[0]
+    assert flips[1] == False
     np.testing.assert_array_equal(
-        forms[0].goal(1),
+        goal.goal(1),
         [
             [2, 0],
             [0, 2],
         ],
     )
+    goal, flips = forms[1]
+    assert flips[1] == False
     np.testing.assert_array_equal(
-        forms[1].goal(1),
+        goal.goal(1),
         [
             [0, 2],
             [2, 0],
         ],
     )
     # Goal 2 is always the same
-    for g in forms:
+    for g, flips in forms:
+        assert flips[2] == False
         np.testing.assert_array_equal(
             g.goal(2),
             [
@@ -359,71 +384,89 @@ def test_goal_alternate_forms_flips(flip_axis):
     forms = list(goal.alternate_forms())
     assert len(forms) == 8
     # Goal 0 is always the same
-    for g in forms:
+    for g, flips in forms:
+        assert flips[0] == False
         np.testing.assert_array_equal(g.goal(0), axis0)
     non_flip_axis = (flip_axis % 2) + 1
     # Non flipped axis is the same
-    for g in forms:
+    for g, flips in forms:
+        assert flips[non_flip_axis] == False
         np.testing.assert_array_equal(g.goal(non_flip_axis), symmetric)
     # Flipped axis has 8 forms we enumerate
+    goal, flips = forms[0]
+    assert flips[flip_axis] == False
     np.testing.assert_array_equal(
-        forms[0].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [2, 2, 2],
             [2, 0, 0],
             [0, 0, 0],
         ],
     )
+    goal, flips = forms[1]
+    assert flips[flip_axis] == False
     np.testing.assert_array_equal(
-        forms[1].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [2, 0, 0],
             [2, 0, 0],
             [2, 2, 0],
         ],
     )
+    goal, flips = forms[2]
+    assert flips[flip_axis] == False
     np.testing.assert_array_equal(
-        forms[2].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [0, 0, 0],
             [0, 0, 2],
             [2, 2, 2],
         ],
     )
+    goal, flips = forms[3]
+    assert flips[flip_axis] == False
     np.testing.assert_array_equal(
-        forms[3].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [0, 2, 2],
             [0, 0, 2],
             [0, 0, 2],
         ],
     )
+    goal, flips = forms[4]
+    assert flips[flip_axis] == True
     np.testing.assert_array_equal(
-        forms[4].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [0, 0, 0],
             [2, 0, 0],
             [2, 2, 2],
         ],
     )
+    goal, flips = forms[5]
+    assert flips[flip_axis] == True
     np.testing.assert_array_equal(
-        forms[5].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [0, 0, 2],
             [0, 0, 2],
             [0, 2, 2],
         ],
     )
+    goal, flips = forms[6]
+    assert flips[flip_axis] == True
     np.testing.assert_array_equal(
-        forms[6].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [2, 2, 2],
             [0, 0, 2],
             [0, 0, 0],
         ],
     )
+    goal, flips = forms[7]
+    assert flips[flip_axis] == True
     np.testing.assert_array_equal(
-        forms[7].goal(flip_axis),
+        goal.goal(flip_axis),
         [
             [2, 2, 0],
             [2, 0, 0],

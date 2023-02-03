@@ -34,6 +34,16 @@ class Design:
             )
 
         self._voxels = np.copy(voxels.astype(int))
+        self._goal_locations = [0, 0, 0]
+
+    @property
+    def goal_locations(self):
+        return self._goal_locations
+
+    def set_goal_location(self, axis, value):
+        if value != 0 and value != -1:
+            raise ValueError(f"Can only set goal location to 0 or -1, got {value}")
+        self._goal_locations[axis] = value
 
     @staticmethod
     def from_size(size) -> Design:
@@ -241,7 +251,9 @@ class Goal:
         self._goals[:, (0, -1), :] = FILLED
         self._goals[:, :, (0, -1)] = FILLED
 
-    def alternate_forms(self, include_flips: bool = True) -> Iterator[Goal]:
+    def alternate_forms(
+        self, include_flips: bool = True
+    ) -> Iterator[Tuple[Goal, Tuple[bool, bool, bool]]]:
         """Produce alternate forms that produce equivalent projectiosn.
 
         include_flips is just an argument for testing, should not be used in practive
@@ -266,7 +278,7 @@ class Goal:
             old_len = len(seen)
             seen.add(goal)
             if len(seen) > old_len:
-                yield goal
+                yield goal, (False, arr1_flip, arr2_flip)
 
     def create_base_design(self) -> Design:
         design = Design.from_size(self._goals.shape[1])

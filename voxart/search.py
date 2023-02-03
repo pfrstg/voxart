@@ -190,9 +190,12 @@ def search(
 
     results = SearchResults(top_n, obj_func)
 
-    for form_idx, goal_form in enumerate(goal.alternate_forms()):
-        print(f"Starting goal form {form_idx}")
+    for form_idx, (goal_form, flips) in enumerate(goal.alternate_forms()):
+        print(f"Starting goal form {form_idx} with flips {flips}")
         starting_design = goal_form.create_base_design()
+        for axis, flip_val in enumerate(flips):
+            if flip_val:
+                starting_design.set_goal_location(axis, -1)
         results.add((form_idx, True), starting_design)
         for _ in range(num_iterations):
             design = copy.deepcopy(starting_design)
