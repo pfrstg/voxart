@@ -28,18 +28,74 @@ def test_stl_saving(tmp_path, random_goal):
         random_goal, "random_face_first", num_iterations=20, top_n=1
     )
     _, design = results.best()[0]
-    mesh = voxart.design_to_stl(design, voxart.FILLED)
+    mesh = voxart.design_to_cube_stl(design, voxart.FILLED)
     mesh.save(os.path.join(tmp_path, "test.stl"))
 
 
-def test_save_stl_pair(tmp_path, random_goal):
+@pytest.mark.parametrize(
+    "connector_style,separate_files,expect_filled,expect_joint",
+    [
+        ("cube", True, True, False),
+        ("cube", False, False, True),
+        ("strut", True, True, False),
+        ("strut", False, False, True),
+    ],
+)
+def test_save_stl_noconn(
+    tmp_path, random_goal, connector_style, separate_files, expect_filled, expect_joint
+):
     design = random_goal.create_base_design()
-    voxart.save_stl_pair(design, f"{tmp_path}/noconn")
-    # import glob; print(glob.glob(f"{tmp_path}/*"))
-    assert os.path.exists(f"{tmp_path}/noconn_filled.stl")
-    assert not os.path.exists(f"{tmp_path}/noconn_connector.stl")
-    design.voxels[1, 1, 1] = voxart.CONNECTOR
-    voxart.save_stl_pair(design, f"{tmp_path}/withconn")
-    # import glob; print(glob.glob(f"{tmp_path}/*"))
-    assert os.path.exists(f"{tmp_path}/withconn_filled.stl")
-    assert os.path.exists(f"{tmp_path}/withconn_connector.stl")
+    stem = f"{tmp_path}/save_stl_noconn"
+    voxart.save_stl(
+        design,
+        file_stem=stem,
+        connector_style=connector_style,
+        separate_files=separate_files,
+    )
+    if expect_filled:
+        assert os.path.exists(stem + "_filled.stl")
+    else:
+        assert not os.path.exists(stem + "_filled.stl")
+    if expect_joint:
+        assert os.path.exists(stem + ".stl")
+    else:
+        assert not os.path.exists(stem + ".stl")
+
+
+@pytest.mark.parametrize(
+    "connector_style,separate_files,expect_separate,expect_joint",
+    [
+        ("cube", True, True, False),
+        ("cube", False, False, True),
+        ("strut", True, True, False),
+        ("strut", False, False, True),
+    ],
+)
+def test_save_stl_conn(
+    tmp_path,
+    random_goal,
+    connector_style,
+    separate_files,
+    expect_separate,
+    expect_joint,
+):
+    design = random_goal.create_base_design()
+    design.add_frame()
+    design.voxels[1, 1, 0] = voxart.CONNECTOR
+    stem = f"{tmp_path}/save_stl_noconn"
+    voxart.save_stl(
+        design,
+        file_stem=stem,
+        connector_style=connector_style,
+        separate_files=separate_files,
+    )
+    if expect_separate:
+        assert os.path.exists(stem + "_filled.stl")
+        assert os.path.exists(stem + "_connector.stl")
+    else:
+        assert not os.path.exists(stem + "_filled.stl")
+        assert not os.path.exists(stem + "_connector.stl")
+    if expect_joint:
+        assert os.path.exists(stem + ".stl")
+    else:
+        assert not os.path.exists(stem + ".stl")
