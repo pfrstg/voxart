@@ -35,6 +35,7 @@ class Masks:
             self.edges[tuple(indices)] = True
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
+        # TODO: remove front_faces
         self.front_faces = np.full((size, size, size), False)
         self.front_faces[0, :, :] = True
         self.front_faces[:, 0, :] = True
