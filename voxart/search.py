@@ -35,12 +35,25 @@ class Masks:
             self.edges[tuple(indices)] = True
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
-        # TODO: remove front_faces
-        self.front_faces = np.full((size, size, size), False)
-        self.front_faces[0, :, :] = True
-        self.front_faces[:, 0, :] = True
-        self.front_faces[:, :, 0] = True
-        self.front_faces &= self.faces
+
+    @property
+    def size(self) -> int:
+        return self.interior.shape[0]
+
+    def front_faces(self, goal_locations: List[int]) -> np.typing.NDArray:
+        """Mask for the faces where the goals are frontwards.
+
+        goal_locations woudl typically be from a Design object.
+        """
+        goal_locations = np.asarray(goal_locations)
+        if not np.all((goal_locations == 0) | (goal_locations == -1)):
+            raise ValueError(f"goal_locations must be 0,-1, got {goal_locations}")
+        front_faces = np.full((self.size, self.size, self.size), False)
+        front_faces[goal_locations[0], :, :] = True
+        front_faces[:, goal_locations[1], :] = True
+        front_faces[:, :, goal_locations[2]] = True
+        front_faces &= self.faces
+        return front_faces
 
 
 class ObjectiveFunction:
@@ -160,7 +173,7 @@ def _search_random_face_first(
 def _search_random_clear_front(
     design: voxart.Design, masks: Masks, rng: np.random.Generator
 ):
-    design.voxels[masks.front_faces] = voxart.EMPTY
+    design.voxels[masks.front_faces(design.goal_locations)] = voxart.EMPTY
     _random_search(design, masks.faces, rng)
     _random_search(design, masks.interior, rng)
 

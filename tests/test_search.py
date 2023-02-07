@@ -69,36 +69,6 @@ def test_masks():
     )
 
     np.testing.assert_array_equal(
-        masks.front_faces,
-        [
-            [
-                [False, False, False, False],
-                [False, True, True, False],
-                [False, True, True, False],
-                [False, False, False, False],
-            ],
-            [
-                [False, True, True, False],
-                [True, False, False, False],
-                [True, False, False, False],
-                [False, False, False, False],
-            ],
-            [
-                [False, True, True, False],
-                [True, False, False, False],
-                [True, False, False, False],
-                [False, False, False, False],
-            ],
-            [
-                [False, False, False, False],
-                [False, False, False, False],
-                [False, False, False, False],
-                [False, False, False, False],
-            ],
-        ],
-    )
-
-    np.testing.assert_array_equal(
         masks.edges,
         [
             [
@@ -127,6 +97,58 @@ def test_masks():
             ],
         ],
     )
+
+
+def test_masks_front_faces():
+    masks = voxart.Masks(3)
+    np.testing.assert_array_equal(
+        masks.front_faces([0, 0, 0]),
+        [
+            [
+                [False, False, False],
+                [False, True, False],
+                [False, False, False],
+            ],
+            [
+                [False, True, False],
+                [True, False, False],
+                [False, False, False],
+            ],
+            [
+                [False, False, False],
+                [False, False, False],
+                [False, False, False],
+            ],
+        ],
+    )
+    np.testing.assert_array_equal(
+        masks.front_faces([-1, -1, -1]),
+        [
+            [
+                [False, False, False],
+                [False, False, False],
+                [False, False, False],
+            ],
+            [
+                [False, False, False],
+                [False, False, True],
+                [False, True, False],
+            ],
+            [
+                [False, False, False],
+                [False, True, False],
+                [False, False, False],
+            ],
+        ],
+    )
+
+
+def test_masks_front_faces_invalid():
+    masks = voxart.Masks(3)
+    with pytest.raises(ValueError):
+        masks.front_faces([2, 0, 0])
+    with pytest.raises(ValueError):
+        masks.front_faces([0, -2, 0])
 
 
 @pytest.fixture
