@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import copy
-import functools
 import heapq
 import itertools
-import logging
 from dataclasses import dataclass, field
 from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union
 
@@ -27,12 +25,8 @@ class Masks:
         self.interior[1 : size - 1, 1 : size - 1, 1 : size - 1] = True
 
         self.edges = np.full((size, size, size), False)
-        for axis, idx0, idx1 in itertools.product(
-            range(3), [0, size - 1], [0, size - 1]
-        ):
-            indices = [idx0, idx1]
-            indices.insert(axis, slice(None))
-            self.edges[tuple(indices)] = True
+        for edge in self.single_edges():
+            self.edges |= edge
 
         self.faces = np.full((size, size, size), True) & ~self.interior & ~self.edges
 
@@ -54,6 +48,17 @@ class Masks:
         front_faces[:, :, goal_locations[2]] = True
         front_faces &= self.faces
         return front_faces
+
+    def single_edges(self):
+        # Note that this method is called in init so be careful if it relies on anything else
+        for axis, idx0, idx1 in itertools.product(
+            range(3), [0, self.size - 1], [0, self.size - 1]
+        ):
+            edge = np.full((self.size, self.size, self.size), False)
+            indices = [idx0, idx1]
+            indices.insert(axis, slice(None))
+            edge[tuple(indices)] = True
+            yield edge
 
 
 class ObjectiveFunction:

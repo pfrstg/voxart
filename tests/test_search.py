@@ -151,6 +151,15 @@ def test_masks_front_faces_invalid():
         masks.front_faces([0, -2, 0])
 
 
+def test_masks_single_edges():
+    masks = voxart.Masks(3)
+    single_edges = list(masks.single_edges())
+    assert len(single_edges) == 12
+    for edge in single_edges:
+        assert np.sum(edge) == 3
+    assert np.all(np.logical_or.reduce(single_edges) == masks.edges)
+
+
 @pytest.fixture
 def rng():
     return np.random.default_rng()
