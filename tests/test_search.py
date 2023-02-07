@@ -322,8 +322,14 @@ def empty_design_5():
 
 
 def test_get_shortest_path_to_targets_single(empty_design_5, rng):
+    masks = voxart.Masks(empty_design_5)
     target, distance, path = voxart.get_shortest_path_to_targets(
-        empty_design_5, voxart.Masks(empty_design_5), {(1, 1, 1)}, rng
+        empty_design_5,
+        masks,
+        list(zip(*np.where(masks.edges))),
+        {(1, 1, 1)},
+        allowed_mask=None,
+        rng=rng,
     )
     assert target == (1, 1, 1)
     assert distance == 2
@@ -331,8 +337,14 @@ def test_get_shortest_path_to_targets_single(empty_design_5, rng):
 
 
 def test_get_shortest_path_to_targets_two(empty_design_5, rng):
+    masks = voxart.Masks(empty_design_5)
     target, distance, path = voxart.get_shortest_path_to_targets(
-        empty_design_5, voxart.Masks(empty_design_5), {(1, 1, 1), (2, 2, 2)}, rng
+        empty_design_5,
+        masks,
+        list(zip(*np.where(masks.edges))),
+        {(1, 1, 1), (2, 2, 2)},
+        allowed_mask=None,
+        rng=rng,
     )
     assert target == (1, 1, 1)
     assert distance == 2
@@ -340,8 +352,14 @@ def test_get_shortest_path_to_targets_two(empty_design_5, rng):
 
 
 def test_get_shortest_path_to_targets_zero_dist(empty_design_5, rng):
+    masks = voxart.Masks(empty_design_5)
     target, distance, path = voxart.get_shortest_path_to_targets(
-        empty_design_5, voxart.Masks(empty_design_5), {(2, 0, 0)}, rng
+        empty_design_5,
+        masks,
+        list(zip(*np.where(masks.edges))),
+        {(2, 0, 0)},
+        allowed_mask=None,
+        rng=rng,
     )
     assert target == (2, 0, 0)
     assert distance == 0
@@ -389,3 +407,47 @@ def test_search_connectors(empty_design_5, rng):
 
     assert got_design.num_filled() == 46
     assert got_design.num_connectors() == 3
+
+
+def test_connect_edges():
+    design = voxart.Design.from_size(4)
+    design.add_frame()
+
+    design.voxels[1, 1, 1] = voxart.FILLED
+    design.voxels[1, 1, 2] = voxart.FILLED
+
+    # We need a constant rng because there are mutliple reasonable options
+    # for shortest paths
+    rng = np.random.default_rng(12345)
+    voxart.connect_edges(design, voxart.Masks(design), rng)
+
+    print(design.voxels)
+    np.testing.assert_array_equal(
+        design.voxels,
+        [
+            [
+                [2, 2, 2, 2],
+                [2, 0, 0, 2],
+                [2, 0, 0, 2],
+                [2, 2, 2, 2],
+            ],
+            [
+                [2, 1, 0, 2],
+                [1, 2, 2, 1],
+                [0, 1, 0, 0],
+                [2, 1, 1, 2],
+            ],
+            [
+                [2, 1, 0, 2],
+                [1, 0, 0, 1],
+                [0, 0, 0, 0],
+                [2, 1, 0, 2],
+            ],
+            [
+                [2, 2, 2, 2],
+                [2, 0, 0, 2],
+                [2, 0, 0, 2],
+                [2, 2, 2, 2],
+            ],
+        ],
+    )

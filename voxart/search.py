@@ -252,7 +252,9 @@ class _PathEntry:
 def get_shortest_path_to_targets(
     design: voxart.Design,
     masks: Masks,
+    starting: List[Tuple[int, int, int]],
     targets: Set[Tuple[int, int, int]],
+    allowed_mask: Optional[np.typing.NDArray],
     rng: Optional[np.random.Generator] = None,
 ) -> Tuple[Tuple[int, int, int], int, List[Tuple[int, int, int]]]:
     """Given a set of targets, find the shortest path to the edge of the design.
@@ -260,18 +262,13 @@ def get_shortest_path_to_targets(
     If there are multiple targets with shortest paths or multiple shortest paths,
     a random one will be returned.
     I don't know if it is uniformly random or not. Probably not.
-    We use the rng to randomly pick an edge to start from.
+    We use the rng to randomly pick an edge voxel to start from.
     """
     if rng is None:
         rng = np.random.default_rng()
 
-    edge_vox = np.where(masks.edges)
-    starting_idx = rng.integers(len(edge_vox[0]))
-    starting_point = (
-        edge_vox[0][starting_idx],
-        edge_vox[1][starting_idx],
-        edge_vox[2][starting_idx],
-    )
+    starting_idx = rng.integers(len(starting))
+    starting_point = starting[starting_idx]
 
     frontier = [_PathEntry(starting_point, None, 0)]
     visited = {}
@@ -294,6 +291,8 @@ def get_shortest_path_to_targets(
         visited[entry.vox] = entry.parent
         for neighbor in get_neighbors(entry.vox, design.size):
             neighbor = tuple(neighbor)
+            if allowed_mask is not None and not allowed_mask[neighbor]:
+                continue
             dist = entry.distance
             if design.voxels[neighbor] == voxart.EMPTY:
                 dist += 1
@@ -323,6 +322,7 @@ def search_connectors(
         obj_func = ObjectiveFunction()
     obj_func.set_masks(masks)
 
+    edge_indices = list(zip(*np.where(masks.edges)))
     results = SearchResults(top_n, obj_func)
     for iter_idx in trange(num_iterations):
         design = copy.deepcopy(starting_design)
@@ -348,7 +348,12 @@ def search_connectors(
                     v for i, v in enumerate(pending_vox) if i in active_subset_idx
                 }
             target, distance, path = get_shortest_path_to_targets(
-                design, masks, active_subset, rng
+                design,
+                masks,
+                starting=edge_indices,
+                targets=active_subset,
+                allowed_mask=None,
+                rng=rng,
             )
             assert target in pending_vox
             add_path_as_connectors(design, path)
@@ -357,3 +362,28 @@ def search_connectors(
         results.add((iter_idx, design.num_connectors()), design)
 
     return results
+
+
+def connect_edges(
+    design: voxart.Design, masks: Masks, rng: Optional[np.random.Generator] = None
+):
+    if rng is None:
+        rng = np.random.default_rng()
+
+    targets = (design.voxels == voxart.FILLED) | (design.voxels == voxart.CONNECTOR)
+    targets &= masks.interior
+    targets = set(zip(*np.where(targets)))
+    allowed_mask = ~masks.edges
+
+    for edge in masks.single_edges():
+        target, distance, path = get_shortest_path_to_targets(
+            design,
+            masks,
+            allowed_mask=allowed_mask | edge,
+            starting=list(zip(*np.where(edge))),
+            targets=targets,
+            rng=rng,
+        )
+        if distance == 0:
+            continue
+        add_path_as_connectors(design, path)
