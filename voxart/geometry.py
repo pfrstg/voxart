@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable, Tuple
+from typing import Iterable, List, Tuple
 
 import numpy as np
 import stl
@@ -206,7 +206,7 @@ def connector_struct(
 def make_connector_strut_test_stl():
     triangles = list(vox_to_triangles((0, 0, 0)))
     for i, strut_info in enumerate(_CONNECTOR_STRUT_INFO):
-        triangles.extend(connector_struct([i + 1, i + 1, i + 1], strut_info, 0.2))
+        triangles.extend(connector_struct((i + 1, i + 1, i + 1), strut_info, 0.2))
     return triangles_to_stl(triangles)
 
 
