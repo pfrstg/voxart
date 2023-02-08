@@ -16,6 +16,16 @@ import voxart
 
 
 class Masks:
+    """Useful True/False arrays for working with Designs.
+
+    edges: the with 1 region at the exteriors
+    faces: extenrior faces, not including the edges
+    interior: not edges or faces
+    single_edges: generator for each edge. Note tha the corners are included in
+      3 single edges
+    full_faces: generator for each face, including the edges on that face
+    """
+
     def __init__(self, size_or_design: Union[int, voxart.Design]):
         if isinstance(size_or_design, voxart.Design):
             size = size_or_design.size
@@ -59,6 +69,14 @@ class Masks:
             indices.insert(axis, slice(None))
             edge[tuple(indices)] = True
             yield edge
+
+    def full_faces(self):
+        for axis, idx in itertools.product(range(3), [0, -1]):
+            full_face = np.full((self.size, self.size, self.size), False)
+            indices = [slice(None), slice(None)]
+            indices.insert(axis, idx)
+            full_face[tuple(indices)] = True
+            yield full_face
 
 
 class ObjectiveFunction:
@@ -367,6 +385,11 @@ def search_connectors(
 def connect_edges(
     design: voxart.Design, masks: Masks, rng: Optional[np.random.Generator] = None
 ):
+    """Connect every edge to an interior block (filled or connector).
+
+    This is probably not what you want to do, but leaving it here in case.
+    See connect_faces instead.
+    """
     if rng is None:
         rng = np.random.default_rng()
 
@@ -381,6 +404,36 @@ def connect_edges(
             masks,
             allowed_mask=allowed_mask | edge,
             starting=list(zip(*np.where(edge))),
+            targets=targets,
+            rng=rng,
+        )
+        if distance == 0:
+            continue
+        add_path_as_connectors(design, path)
+
+
+def connect_faces(
+    design: voxart.Design,
+    masks: Optional[Masks] = None,
+    rng: Optional[np.random.Generator] = None,
+):
+    """Connect every face to an interior block (filled or connector)."""
+    if rng is None:
+        rng = np.random.default_rng()
+
+    if masks is None:
+        masks = Masks(design)
+
+    targets = (design.voxels == voxart.FILLED) | (design.voxels == voxart.CONNECTOR)
+    targets &= masks.interior
+    targets = set(zip(*np.where(targets)))
+
+    for face in masks.full_faces():
+        target, distance, path = get_shortest_path_to_targets(
+            design,
+            masks,
+            allowed_mask=face | masks.interior,
+            starting=list(zip(*np.where(face & masks.edges))),
             targets=targets,
             rng=rng,
         )

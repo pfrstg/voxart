@@ -160,6 +160,15 @@ def test_masks_single_edges():
     assert np.all(np.logical_or.reduce(single_edges) == masks.edges)
 
 
+def test_masks_full_faces():
+    masks = voxart.Masks(3)
+    full_faces = list(masks.full_faces())
+    assert len(full_faces) == 6
+    for face in full_faces:
+        assert np.sum(face) == 9
+    assert np.all(np.logical_or.reduce(full_faces) == masks.edges | masks.faces)
+
+
 @pytest.fixture
 def rng():
     return np.random.default_rng()
@@ -421,7 +430,6 @@ def test_connect_edges():
     rng = np.random.default_rng(12345)
     voxart.connect_edges(design, voxart.Masks(design), rng)
 
-    print(design.voxels)
     np.testing.assert_array_equal(
         design.voxels,
         [
@@ -446,6 +454,49 @@ def test_connect_edges():
             [
                 [2, 2, 2, 2],
                 [2, 0, 0, 2],
+                [2, 0, 0, 2],
+                [2, 2, 2, 2],
+            ],
+        ],
+    )
+
+
+def test_connect_faces():
+    design = voxart.Design.from_size(4)
+    design.add_frame()
+
+    design.voxels[1, 1, 1] = voxart.FILLED
+    design.voxels[1, 1, 2] = voxart.FILLED
+
+    # We need a constant rng because there are mutliple reasonable options
+    # for shortest paths
+    rng = np.random.default_rng(12345)
+    voxart.connect_faces(design, rng=rng)
+
+    np.testing.assert_array_equal(
+        design.voxels,
+        [
+            [
+                [2, 2, 2, 2],
+                [2, 1, 0, 2],
+                [2, 0, 0, 2],
+                [2, 2, 2, 2],
+            ],
+            [
+                [2, 1, 0, 2],
+                [1, 2, 2, 1],
+                [0, 0, 0, 0],
+                [2, 0, 0, 2],
+            ],
+            [
+                [2, 0, 0, 2],
+                [0, 1, 0, 0],
+                [0, 1, 0, 0],
+                [2, 1, 0, 2],
+            ],
+            [
+                [2, 2, 2, 2],
+                [2, 1, 0, 2],
                 [2, 0, 0, 2],
                 [2, 2, 2, 2],
             ],
