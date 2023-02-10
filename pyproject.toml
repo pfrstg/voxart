@@ -13,6 +13,8 @@ pandas = "^1.5.2"
 matplotlib = "^3.6.2"
 numpy-stl = "^3.0.0"
 tqdm = "^4.64.1"
+# scipy doesn't look like a direct dependecy, but it's needed by seaborn
+scipy = "^1.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
