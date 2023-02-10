@@ -191,9 +191,15 @@ def test_search_design_random(random_goal, strategy):
     num_alternate_forms = len(list(random_goal.alternate_forms()))
     results = voxart.search(random_goal, strategy, 2, 3)
     assert len(results.best()) == 3
-    df = results.all_objective_values(["form_idx", "is_starting"])
+    df = results.all_objective_values()
     # It's 3 because we always add a result of the starting value
     assert len(df) == 3 * num_alternate_forms
+    assert list(df.columns) == [
+        "form_idx",
+        "is_starting",
+        "iteration",
+        "objective_value",
+    ]
     best_label, best_design = results.best()[0]
     # We're going to do a fairly weak check here because of the rotations and
     # flips the actual goal can change.

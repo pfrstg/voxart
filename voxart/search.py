@@ -126,11 +126,12 @@ class SearchResultsEntry:
 class SearchResults:
     """Maintains state about the entire search process for a design."""
 
-    def __init__(self, top_n: int, obj_func: ObjectiveFunction):
+    def __init__(self, top_n: int, obj_func: ObjectiveFunction, label_names: List[str]):
         self._top_n_to_keep = top_n
         self._best_results_heap = []
         self._all_objective_values = []
         self._obj_func = obj_func
+        self._label_names = label_names
 
     def add(self, label: Tuple, design: voxart.Design):
         """Adds a given design result
@@ -153,10 +154,10 @@ class SearchResults:
             for e in sorted(self._best_results_heap, key=lambda e: -e.objective_value)
         ]
 
-    def all_objective_values(self, label_names: List[str]) -> pd.DataFrame:
+    def all_objective_values(self) -> pd.DataFrame:
         return pd.DataFrame(
             ((*l, v) for (l, v) in self._all_objective_values),
-            columns=label_names + ["objective_value"],
+            columns=self._label_names + ["objective_value"],
         )
 
 
@@ -226,7 +227,7 @@ def search(
         obj_func = ObjectiveFunction()
     obj_func.set_masks(masks)
 
-    results = SearchResults(top_n, obj_func)
+    results = SearchResults(top_n, obj_func, ["form_idx", "is_starting", "iteration"])
 
     goal_forms = list(goal.alternate_forms())
     pbar = tqdm(goal_forms)
@@ -237,11 +238,11 @@ def search(
         for axis, flip_val in enumerate(flips):
             if flip_val:
                 starting_design.set_goal_location(axis, -1)
-        results.add((form_idx, True), starting_design)
-        for _ in range(num_iterations):
+        results.add((form_idx, True, -1), starting_design)
+        for iter_idx in range(num_iterations):
             design = copy.deepcopy(starting_design)
             search_fn(design, masks, rng)
-            results.add((form_idx, False), design)
+            results.add((form_idx, False, iter_idx), design)
     pbar.close()
 
     return results
@@ -341,7 +342,7 @@ def search_connectors(
     obj_func.set_masks(masks)
 
     edge_indices = list(zip(*np.where(masks.edges)))
-    results = SearchResults(top_n, obj_func)
+    results = SearchResults(top_n, obj_func, ["iteration", "num_connectors"])
     for iter_idx in trange(num_iterations):
         design = copy.deepcopy(starting_design)
 
