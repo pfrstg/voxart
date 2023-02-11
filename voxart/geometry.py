@@ -254,9 +254,11 @@ def save_stl(
     file_stem: str,
     connector_style: str = "cube",
     strut_width: float = 0.2,
+    scale: float = 1.0,
     separate_files: bool = True,
 ):
     filled_stl = design_to_cube_stl(design, voxart.FILLED)
+    filled_stl.vectors *= scale
     if np.sum(design.voxels == voxart.CONNECTOR) == 0:
         connector_stl = None
     elif connector_style == "cube":
@@ -265,6 +267,8 @@ def save_stl(
         connector_stl = design_to_connector_strut_stl(design, strut_width)
     else:
         raise ValueError(f"Bad connector_style {connector_style}")
+    if connector_stl is not None:
+        connector_stl.vectors *= scale
 
     if separate_files:
         filled_stl.save(file_stem + "_filled.stl")
