@@ -141,7 +141,7 @@ class Design:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
             ax.imshow(
-                self.projection(axis),
+                _transform_for_image(axis, self.projection(axis)),
                 cmap="Greys",
                 interpolation="none",
                 vmin=0,
@@ -166,7 +166,13 @@ class Design:
         for axis in range(3):
             for i, slc in enumerate(self.slices(axis)):
                 ax = axes[axis, i]
-                ax.imshow(slc, cmap="Greys", interpolation="none", vmin=0, vmax=2)
+                ax.imshow(
+                    _transform_for_image(axis, slc),
+                    cmap="Greys",
+                    interpolation="none",
+                    vmin=0,
+                    vmax=2,
+                )
                 ax.tick_params(
                     axis="both",
                     which="both",
@@ -223,7 +229,12 @@ class Goal:
         arr[arr >= 128] = EMPTY
 
         sz = arr.shape[1]
-        return voxart.Goal(arr.reshape((3, sz, sz)))
+        reshaped = arr.reshape((3, sz, sz))
+        return voxart.Goal.from_arrays(
+            _transform_for_image(0, reshaped[0, :, :]),
+            _transform_for_image(1, reshaped[1, :, :]),
+            _transform_for_image(2, reshaped[2, :, :]),
+        )
 
     def __eq__(self, other):
         if self._goals.shape != other._goals.shape:
@@ -242,7 +253,8 @@ class Goal:
 
     def to_image(self):
         sz = self.size
-        out = np.reshape(self._goals, (3 * sz, sz)).astype(np.uint8)
+        transformed = [_transform_for_image(i, self._goals[i, :, :]) for i in range(3)]
+        out = np.reshape(transformed, (3 * sz, sz)).astype(np.uint8)
         out[out == EMPTY] = 255
         out[out == FILLED] = 0
         return Image.fromarray(out, mode="L")
@@ -294,8 +306,9 @@ class Goal:
     def fig(self) -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for goal_idx, ax in enumerate(axes):
+            image_vals = np.squeeze(self._goals[goal_idx, :, :])
             ax.imshow(
-                self._goals[goal_idx, :, :],
+                _transform_for_image(goal_idx, self._goals[goal_idx, :, :]),
                 cmap="binary",
                 interpolation="none",
                 vmin=0,
@@ -314,3 +327,34 @@ class Goal:
             ax.grid(visible=True)
         plt.close()
         return fig
+
+
+def _transform_for_image(axis: int, vals: np.typing.ArrayLike):
+    """Transforms values for image coordinates.
+
+    Image coordinates are always an upper left of (0, 0)
+    The cartesian coordinate frame doesn't always put (0, 0) at the upper left.
+    This transforms a 2D slice/projection so that when it is displayed in image
+    cordinates, it looks like it would in the cartesian frame
+
+    axis refers to which axis you are looking down / has been projected out.
+
+    For axis 0, the YZ plane, (0,0) is in the lower right
+    For axis 1, the XZ plane, (0,0) is in the lower left
+    For axis 2, the XY plane, (0,0) is in the upper left
+
+    And also images are in row/col format (first axis is vertical)
+    and we want to use X/Y (first axis is horizontal)
+    """
+    vals = np.asarray(vals)
+    if len(vals.shape) != 2:
+        vals = np.square(vals)
+    if len(vals.shape) != 2:
+        raise ValueError(f"Can only transform 2D image, got {vals.shape}")
+    vals = np.swapaxes(vals, 0, 1)
+    if axis == 0:
+        vals = np.flipud(vals)
+        vals = np.fliplr(vals)
+    elif axis == 1:
+        vals = np.flipud(vals)
+    return vals

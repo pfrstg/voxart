@@ -1981,6 +1981,17 @@ files = [
 tests = ["pytest"]
 
 [[package]]
+name = "pyassimp"
+version = "4.1.4"
+description = "Python bindings for the Open Asset Import Library (ASSIMP)"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "pyassimp-4.1.4.tar.gz", hash = "sha256:266bd4be170d46065b8c2ad0f5396dad10938a6bbf9a566c4e4d56456e33aa6a"},
+]
+
+[[package]]
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
@@ -2876,4 +2887,4 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.11"
-content-hash = "dcaa97675fa859fcbe4a1f4915a574f8fd95558bd5b6d56fa3d128c29431daf3"
+content-hash = "2fc02b9f920a31e5b7f10cdf4e45cc0a4d062f3a33cbcea0df88b9ab91c5063f"
