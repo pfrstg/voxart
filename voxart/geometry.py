@@ -253,7 +253,7 @@ def design_to_connector_strut_stl(
     return triangles_to_stl(triangles)
 
 
-@functools.cache
+@functools.lru_cache(maxsize=None)
 def _locate_prusa_slicer() -> Optional[str]:
     mac_location = "/Applications/Original Prusa Drivers/PrusaSlicer.app/Contents/MacOS/PrusaSlicer"
     colab_glob = "*/bin/prusa-slicer"
