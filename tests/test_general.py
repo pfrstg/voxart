@@ -189,7 +189,24 @@ def test_goal_hash():
 
 
 def test_goal_image_save_load(tmp_path):
-    goal = voxart.Goal.from_arrays([[2, 2], [2, 2]], [[0, 0], [2, 2]], [[2, 0], [0, 0]])
+    goal = voxart.Goal.from_arrays(
+        [
+            [2, 2, 0],
+            [2, 0, 0],
+            [2, 0, 0],
+        ],
+        [
+            [2, 2, 0],
+            [0, 2, 0],
+            [0, 0, 2],
+        ],
+        [
+            [2, 2, 0],
+            [0, 2, 0],
+            [2, 0, 0],
+        ],
+    )
+
     fn = os.path.join(tmp_path, "goal.png")
     goal.to_image().save(fn)
     got = voxart.Goal.from_image(Image.open(fn))

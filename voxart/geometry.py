@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import functools
 import math
+import subprocess
 from typing import Iterable, List, Tuple
 
 import numpy as np
@@ -249,13 +251,18 @@ def design_to_connector_strut_stl(
     return triangles_to_stl(triangles)
 
 
-def save_stl(
+@functools.cache
+def _locate_prusa_slicer() -> Optional[str]:
+    return "/Applications/Original Prusa Drivers/PrusaSlicer.app/Contents/MacOS/PrusaSlicer"
+
+
+def save_model_files(
     design: voxart.Design,
     file_stem: str,
     connector_style: str = "cube",
     strut_width: float = 0.2,
     scale: float = 1.0,
-    separate_files: bool = True,
+    write_3mf: bool = True,
 ):
     filled_stl = design_to_cube_stl(design, voxart.FILLED)
     filled_stl.vectors *= scale
@@ -270,15 +277,33 @@ def save_stl(
     if connector_stl is not None:
         connector_stl.vectors *= scale
 
-    if separate_files:
-        filled_stl.save(file_stem + "_filled.stl")
-        if connector_stl:
-            connector_stl.save(file_stem + "_connector.stl")
+    if connector_stl is not None:
+        joint_stl = stl.mesh.Mesh(np.concatenate([filled_stl.data, connector_stl.data]))
     else:
-        if connector_stl:
-            joint_stl = stl.mesh.Mesh(
-                np.concatenate([filled_stl.data, connector_stl.data])
-            )
-        else:
-            joint_stl = filled_stl
-        joint_stl.save(file_stem + ".stl")
+        joint_stl = filled_stl
+
+    filled_stl_fn = file_stem + "_filled.stl"
+    connector_stl_fn = file_stem + "_connector.stl"
+
+    joint_stl.save(file_stem + ".stl")
+    filled_stl.save(filled_stl_fn)
+    if connector_stl:
+        connector_stl.save(connector_stl_fn)
+
+    if write_3mf:
+        slicer_path = _locate_prusa_slicer()
+        if not slicer_path:
+            raise ValueError("Could not find Prusa Slicer")
+
+        args = [
+            slicer_path,
+            "--export-3mf",
+            "--merge",
+            "--dont-arrange",
+            "--output",
+            file_stem + ".3mf",
+            filled_stl_fn,
+        ]
+        if connector_stl is not None:
+            args.append(connector_stl_fn)
+        subprocess.run(args, check=True)

@@ -141,7 +141,7 @@ class Design:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
             ax.imshow(
-                _transform_for_image(axis, self.projection(axis)),
+                _transform_to_image_coords(axis, self.projection(axis)),
                 cmap="Greys",
                 interpolation="none",
                 vmin=0,
@@ -167,7 +167,7 @@ class Design:
             for i, slc in enumerate(self.slices(axis)):
                 ax = axes[axis, i]
                 ax.imshow(
-                    _transform_for_image(axis, slc),
+                    _transform_to_image_coords(axis, slc),
                     cmap="Greys",
                     interpolation="none",
                     vmin=0,
@@ -231,9 +231,9 @@ class Goal:
         sz = arr.shape[1]
         reshaped = arr.reshape((3, sz, sz))
         return voxart.Goal.from_arrays(
-            _transform_for_image(0, reshaped[0, :, :]),
-            _transform_for_image(1, reshaped[1, :, :]),
-            _transform_for_image(2, reshaped[2, :, :]),
+            _transform_from_image_coords(0, reshaped[0, :, :]),
+            _transform_from_image_coords(1, reshaped[1, :, :]),
+            _transform_from_image_coords(2, reshaped[2, :, :]),
         )
 
     def __eq__(self, other):
@@ -253,7 +253,9 @@ class Goal:
 
     def to_image(self):
         sz = self.size
-        transformed = [_transform_for_image(i, self._goals[i, :, :]) for i in range(3)]
+        transformed = [
+            _transform_to_image_coords(i, self._goals[i, :, :]) for i in range(3)
+        ]
         out = np.reshape(transformed, (3 * sz, sz)).astype(np.uint8)
         out[out == EMPTY] = 255
         out[out == FILLED] = 0
@@ -308,7 +310,7 @@ class Goal:
         for goal_idx, ax in enumerate(axes):
             image_vals = np.squeeze(self._goals[goal_idx, :, :])
             ax.imshow(
-                _transform_for_image(goal_idx, self._goals[goal_idx, :, :]),
+                _transform_to_image_coords(goal_idx, self._goals[goal_idx, :, :]),
                 cmap="binary",
                 interpolation="none",
                 vmin=0,
@@ -329,7 +331,7 @@ class Goal:
         return fig
 
 
-def _transform_for_image(axis: int, vals: np.typing.ArrayLike):
+def _image_axis_flips(axis: int, vals: np.typing.ArrayLike):
     """Transforms values for image coordinates.
 
     Image coordinates are always an upper left of (0, 0)
@@ -351,10 +353,23 @@ def _transform_for_image(axis: int, vals: np.typing.ArrayLike):
         vals = np.square(vals)
     if len(vals.shape) != 2:
         raise ValueError(f"Can only transform 2D image, got {vals.shape}")
-    vals = np.swapaxes(vals, 0, 1)
     if axis == 0:
         vals = np.flipud(vals)
         vals = np.fliplr(vals)
     elif axis == 1:
         vals = np.flipud(vals)
+    return vals
+
+
+def _transform_from_image_coords(axis: int, vals: np.typing.ArrayLike):
+    vals = np.asarray(vals)
+    vals = _image_axis_flips(axis, vals)
+    vals = np.swapaxes(vals, 0, 1)
+    return vals
+
+
+def _transform_to_image_coords(axis: int, vals: np.typing.ArrayLike):
+    vals = np.asarray(vals)
+    vals = np.swapaxes(vals, 0, 1)
+    vals = _image_axis_flips(axis, vals)
     return vals

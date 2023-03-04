@@ -33,69 +33,29 @@ def test_stl_saving(tmp_path, random_goal):
 
 
 @pytest.mark.parametrize(
-    "connector_style,separate_files,expect_filled,expect_joint",
+    "connector_style,with_conn",
     [
-        ("cube", True, True, False),
-        ("cube", False, False, True),
-        ("strut", True, True, False),
-        ("strut", False, False, True),
+        ("cube", True),
+        ("cube", False),
+        ("strut", True),
+        ("strut", False),
     ],
 )
-def test_save_stl_noconn(
-    tmp_path, random_goal, connector_style, separate_files, expect_filled, expect_joint
-):
-    design = random_goal.create_base_design()
-    stem = f"{tmp_path}/save_stl_noconn"
-    voxart.save_stl(
-        design,
-        file_stem=stem,
-        connector_style=connector_style,
-        separate_files=separate_files,
-    )
-    if expect_filled:
-        assert os.path.exists(stem + "_filled.stl")
-    else:
-        assert not os.path.exists(stem + "_filled.stl")
-    if expect_joint:
-        assert os.path.exists(stem + ".stl")
-    else:
-        assert not os.path.exists(stem + ".stl")
-
-
-@pytest.mark.parametrize(
-    "connector_style,separate_files,expect_separate,expect_joint",
-    [
-        ("cube", True, True, False),
-        ("cube", False, False, True),
-        ("strut", True, True, False),
-        ("strut", False, False, True),
-    ],
-)
-def test_save_stl_conn(
-    tmp_path,
-    random_goal,
-    connector_style,
-    separate_files,
-    expect_separate,
-    expect_joint,
-):
+def test_save_model(tmp_path, random_goal, connector_style, with_conn):
     design = random_goal.create_base_design()
     design.add_frame()
-    design.voxels[1, 1, 0] = voxart.CONNECTOR
-    stem = f"{tmp_path}/save_stl_noconn"
-    voxart.save_stl(
+    if with_conn:
+        design.voxels[1, 1, 0] = voxart.CONNECTOR
+    stem = f"{tmp_path}/save_model"
+    voxart.save_model_files(
         design,
         file_stem=stem,
         connector_style=connector_style,
-        separate_files=separate_files,
     )
-    if expect_separate:
-        assert os.path.exists(stem + "_filled.stl")
+    assert os.path.exists(stem + "_filled.stl")
+    if with_conn:
         assert os.path.exists(stem + "_connector.stl")
     else:
-        assert not os.path.exists(stem + "_filled.stl")
         assert not os.path.exists(stem + "_connector.stl")
-    if expect_joint:
-        assert os.path.exists(stem + ".stl")
-    else:
-        assert not os.path.exists(stem + ".stl")
+    assert os.path.exists(stem + ".stl")
+    assert os.path.exists(stem + ".3mf")
