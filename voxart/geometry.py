@@ -257,7 +257,7 @@ def design_to_connector_strut_stl(
 def _locate_prusa_slicer() -> Optional[str]:
     mac_location = "/Applications/Original Prusa Drivers/PrusaSlicer.app/Contents/MacOS/PrusaSlicer"
     colab_glob = "*/bin/prusa-slicer"
-    linux_location = "/usr/local/bin/pruse-slicer"
+    linux_location = "/usr/local/bin/prusa-slicer"
 
     if os.path.exists(mac_location):
         return mac_location
