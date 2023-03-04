@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import functools
+import glob
 import math
+import os
 import subprocess
 from typing import Iterable, List, Tuple
 
@@ -253,7 +255,18 @@ def design_to_connector_strut_stl(
 
 @functools.cache
 def _locate_prusa_slicer() -> Optional[str]:
-    return "/Applications/Original Prusa Drivers/PrusaSlicer.app/Contents/MacOS/PrusaSlicer"
+    mac_location = "/Applications/Original Prusa Drivers/PrusaSlicer.app/Contents/MacOS/PrusaSlicer"
+    colab_glob = "*/bin/prusa-slicer"
+    linux_location = "/usr/local/bin/pruse-slicer"
+
+    if os.path.exists(mac_location):
+        return mac_location
+    if os.path.exists(linux_location):
+        return linux_location
+    matches = glob.glob(colab_glob)
+    if matches:
+        return matches[0]
+    return None
 
 
 def save_model_files(
