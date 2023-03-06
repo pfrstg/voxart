@@ -48,19 +48,22 @@ def test_transform_stl_to_stand_on_point():
 
 
 @pytest.mark.parametrize(
-    "connector_style,with_conn",
+    "connector_style,with_conn,bottom_location",
     [
-        ("cube", True),
-        ("cube", False),
-        ("strut", True),
-        ("strut", False),
+        ("cube", True, None),
+        ("cube", False, None),
+        ("strut", True, None),
+        ("strut", False, None),
+        ("cube", True, [1, 1, 1]),
     ],
 )
-def test_save_model(tmp_path, random_goal, connector_style, with_conn):
+def test_save_model(tmp_path, random_goal, connector_style, with_conn, bottom_location):
     design = random_goal.create_base_design()
     design.add_frame()
     if with_conn:
         design.voxels[1, 1, 0] = voxart.CONNECTOR
+    if bottom_location is not None:
+        design.bottom_location = bottom_location
     stem = f"{tmp_path}/save_model"
     voxart.save_model_files(
         design,

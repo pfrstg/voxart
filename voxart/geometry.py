@@ -7,7 +7,7 @@ import glob
 import math
 import os
 import subprocess
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import numpy as np
 import stl
@@ -279,7 +279,7 @@ def transform_stl_to_stand_on_point(
     """
     bottom_location = np.asarray(bottom_location, dtype=np.int32)
     if not np.all((bottom_location == 1) | (bottom_location == 0)):
-        raise ValueError(f"Bad bottom_lcoation {bottom_lcoation}")
+        raise ValueError(f"Bad bottom_lcoation {bottom_location}")
     bottom_pt = bottom_location * size
     mesh.vectors -= bottom_pt
     rot_from_pt = ((bottom_location + 1) % 2) * size - bottom_pt
