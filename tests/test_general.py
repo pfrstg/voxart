@@ -71,6 +71,21 @@ def test_design_goal_locations():
         design.set_goal_location(0, 42)
 
 
+def test_design_bottom_location():
+    design = voxart.Design.from_size(3)
+    assert design.bottom_location is None
+    design.bottom_location = [1, 1, 0]
+    assert np.all(design.bottom_location == [1, 1, 0])
+    design.bottom_location = None
+    assert design.bottom_location is None
+    with pytest.raises(ValueError):
+        design.bottom_location = "123"
+    with pytest.raises(ValueError):
+        design.bottom_location = [1, 1, 1, 1]
+    with pytest.raises(ValueError):
+        design.bottom_location = [10, 20, -30]
+
+
 def test_design_save_load(tmp_path):
     fn = os.path.join(tmp_path, "design.npy")
     design = voxart.Design.from_size(3)

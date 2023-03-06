@@ -20,6 +20,19 @@ FILLED: int = 2
 
 
 class Design:
+    """Represents a full design.
+
+    Note that along the design process, not all aspects of the design (like connectors or bottom location)
+    will be filled in.
+
+    Attibutes
+      voxels: a 3D numpy array with integer values of EMPTY, CONNECTOR, FILLED
+      goal_locations: list of 0, 1 values indicating which faces the goal (in the correct orientaton)
+        is available
+      bottom_location: Which point of the cube to put at the bottom for printing
+        as a 0,1 valued 3 vector
+    """
+
     def __init__(self, voxels: np.typing.ArrayLike):
         voxels = np.asarray(voxels)
         if len(voxels.shape) != 3:
@@ -35,6 +48,7 @@ class Design:
 
         self._voxels = np.copy(voxels.astype(int))
         self._goal_locations = [0, 0, 0]
+        self._bottom_location = None
 
     @property
     def goal_locations(self):
@@ -44,6 +58,22 @@ class Design:
         if value != 0 and value != -1:
             raise ValueError(f"Can only set goal location to 0 or -1, got {value}")
         self._goal_locations[axis] = value
+
+    @property
+    def bottom_location(self):
+        return self._bottom_location
+
+    @bottom_location.setter
+    def bottom_location(self, loc):
+        if loc is None:
+            self._bottom_location = None
+            return
+        loc = np.asarray(loc, dtype=np.int32)
+        if not (np.all((loc == 0) | (loc == 1)) and loc.shape == (3,)):
+            raise ValueError(
+                "Bottom location must be a 0, 1 array of size 3, got {loc}"
+            )
+        self._bottom_location = loc
 
     @staticmethod
     def from_size(size) -> Design:

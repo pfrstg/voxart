@@ -269,6 +269,28 @@ def _locate_prusa_slicer() -> Optional[str]:
     return None
 
 
+def transform_stl_to_stand_on_point(
+    mesh: stl.mesh.Mesh, bottom_location: np.typing.ArrayLike, size: float
+):
+    """Mutates the given mesh to so bottom_location point in the cube is at the bottom.
+
+    bottom_location must be a 0,1 shpae (3,) vector (see Design.bottom_location)
+    size will generally be Design.size
+    """
+    bottom_location = np.asarray(bottom_location, dtype=np.int32)
+    if not np.all((bottom_location == 1) | (bottom_location == 0)):
+        raise ValueError(f"Bad bottom_lcoation {bottom_lcoation}")
+    bottom_pt = bottom_location * size
+    mesh.vectors -= bottom_pt
+    rot_from_pt = ((bottom_location + 1) % 2) * size - bottom_pt
+    target = np.array([0, 0, 1])
+    cp = np.cross(rot_from_pt, target)
+    angle = np.arccos(np.dot(rot_from_pt, target) / np.linalg.norm(rot_from_pt))
+    # I really don't know why we have the reverse the cross product here.
+    # That seems like some diagreement on right hand rule stuff, but this works.
+    mesh.rotate(axis=-cp, theta=angle)
+
+
 def save_model_files(
     design: voxart.Design,
     file_stem: str,
@@ -279,6 +301,7 @@ def save_model_files(
 ):
     filled_stl = design_to_cube_stl(design, voxart.FILLED)
     filled_stl.vectors *= scale
+
     if np.sum(design.voxels == voxart.CONNECTOR) == 0:
         connector_stl = None
     elif connector_style == "cube":
@@ -289,6 +312,16 @@ def save_model_files(
         raise ValueError(f"Bad connector_style {connector_style}")
     if connector_stl is not None:
         connector_stl.vectors *= scale
+
+    # Rotate the STL if requested by the Design
+    if design.bottom_location is not None:
+        transform_stl_to_stand_on_point(
+            filled_stl, design.bottom_location, design.size * scale
+        )
+        if connector_stl is not None:
+            transform_stl_to_stand_on_point(
+                connector_stl, design.bottom_location, design.size * scale
+            )
 
     if connector_stl is not None:
         joint_stl = stl.mesh.Mesh(np.concatenate([filled_stl.data, connector_stl.data]))
