@@ -189,7 +189,7 @@ def random_goal(rng):
 )
 def test_search_design_random(random_goal, strategy):
     num_alternate_forms = len(list(random_goal.alternate_forms()))
-    results = voxart.search(random_goal, strategy, 2, 3)
+    results = voxart.search_filled(random_goal, strategy, 2, 3)
     assert len(results.best()) == 3
     df = results.all_objective_values()
     # It's 3 because we always add a result of the starting value
@@ -508,3 +508,55 @@ def test_connect_faces():
             ],
         ],
     )
+
+
+def test_is_vox_unsupported():
+    design = voxart.Design.from_size(4)
+
+    design.add_frame()
+    design.bottom_location = (1, 1, 1)
+
+    # With just a frame, everything on the edges is supported
+    assert not voxart.is_vox_unsupported(design, (3, 3, 3))
+    assert not voxart.is_vox_unsupported(design, (0, 0, 0))
+    assert not voxart.is_vox_unsupported(design, (2, 0, 0))
+    assert not voxart.is_vox_unsupported(design, (3, 3, 2))
+
+    # No matter the bottom_location
+    design.bottom_location = (1, 1, 1)
+    assert not voxart.is_vox_unsupported(design, (3, 3, 3))
+    assert not voxart.is_vox_unsupported(design, (0, 0, 0))
+    assert not voxart.is_vox_unsupported(design, (2, 0, 0))
+    assert not voxart.is_vox_unsupported(design, (3, 3, 2))
+
+    # add one block that is suported in teh (0, 0, 0) direction
+    design.voxels[1, 1, 1] = voxart.FILLED
+    design.voxels[1, 0, 1] = voxart.CONNECTOR
+    design.bottom_location = (0, 0, 0)
+    assert not voxart.is_vox_unsupported(design, (1, 1, 1))
+    design.bottom_location = (1, 1, 1)
+    assert voxart.is_vox_unsupported(design, (1, 1, 1))
+    design.bottom_location = (1, 0, 0)
+    assert not voxart.is_vox_unsupported(design, (1, 1, 1))
+    design.bottom_location = (0, 1, 0)
+    assert voxart.is_vox_unsupported(design, (1, 1, 1))
+    design.bottom_location = (0, 0, 1)
+    assert not voxart.is_vox_unsupported(design, (1, 1, 1))
+
+
+def test_count_unsupported():
+    design = voxart.Design.from_size(4)
+
+    design.add_frame()
+    design.bottom_location = (0, 0, 0)
+    assert voxart.count_unsupported(design) == 0
+
+    design.voxels[1, 1, 1] = voxart.FILLED
+    assert voxart.count_unsupported(design) == 1
+
+    design.voxels[2, 2, 2] = voxart.CONNECTOR
+    assert voxart.count_unsupported(design) == 2
+
+    # Now add a support for the filled block
+    design.voxels[0, 1, 1] = voxart.FILLED
+    assert voxart.count_unsupported(design) == 1

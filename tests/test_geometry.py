@@ -26,7 +26,7 @@ def random_goal(rng):
 
 
 def test_stl_saving(tmp_path, random_goal):
-    results = voxart.search(
+    results = voxart.search_filled(
         random_goal, "random_face_first", num_iterations=20, top_n=1
     )
     _, design = results.best()[0]

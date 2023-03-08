@@ -202,7 +202,7 @@ def _search_random_clear_front(
     _random_search(design, masks.interior, rng)
 
 
-def search(
+def search_filled(
     goal: voxart.Goal,
     strategy: str,
     num_iterations: int,
@@ -441,3 +441,36 @@ def connect_faces(
         if distance == 0:
             continue
         add_path_as_connectors(design, path)
+
+
+def is_vox_unsupported(design: Design, vox: Tuple[int]):
+    if np.all(vox == design.bottom_location * (design.size - 1)):
+        return False
+    for neigh_vox in get_neighbors(vox, design.size):
+        if design.voxels[tuple(neigh_vox)] == voxart.EMPTY:
+            continue
+        diff = neigh_vox - vox
+        # print(f"For {vox}, bottom {design.bottom_location}, neighbor {neigh_vox}, diff {diff}, "
+        #       f"{design.bottom_location * 2 - 1} {diff == (design.bottom_location * 2 - 1)}")
+        if np.sum(diff == (design.bottom_location * 2 - 1)) == 1:
+            return False
+    return True
+
+
+def count_unsupported(design: voxart.Design):
+    """Counts the number of filled or connector blocks that are unsupported.
+
+    Unsupported means that none of the 3 neighbors in the direction of the
+    design.bottom_location are filled or connector blocks.
+    """
+    if design.bottom_location is None:
+        raise ValueError("Require bottom_location to be set")
+
+    unsupported = 0
+    for vox in itertools.product(range(design.size), repeat=3):
+        if design.voxels[vox] == voxart.EMPTY:
+            continue
+        if is_vox_unsupported(design, vox):
+            unsupported += 1
+
+    return unsupported
