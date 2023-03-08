@@ -6,6 +6,7 @@ import copy
 import itertools
 from typing import Iterator, Optional, Tuple
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -214,6 +215,20 @@ class Design:
                 ax.set_xticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
                 ax.set_yticks(np.linspace(-0.5, self.size - 0.5, self.size + 1))
                 ax.grid(visible=True)
+            if self.bottom_location is not None:
+                ax = axes[axis, self.bottom_location[axis] * (self.size - 1)]
+                if axis == 0:
+                    loc = [(self.bottom_location[1] + 1) % 2, self.bottom_location[2]]
+                elif axis == 1:
+                    loc = [self.bottom_location[0], self.bottom_location[2]]
+                elif axis == 2:
+                    loc = [self.bottom_location[0], (self.bottom_location[1] + 1) % 2]
+                ax.add_patch(
+                    mpl.patches.Circle(
+                        loc, 0.1, transform=ax.transAxes, facecolor="red"
+                    )
+                )
+
         plt.close()
         return fig
 
