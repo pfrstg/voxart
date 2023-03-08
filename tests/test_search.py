@@ -560,3 +560,25 @@ def test_count_unsupported():
     # Now add a support for the filled block
     design.voxels[0, 1, 1] = voxart.FILLED
     assert voxart.count_unsupported(design) == 1
+
+
+def test_search_bottom_location():
+    design = voxart.Design.from_size(4)
+
+    design.add_frame()
+
+    # add one block that is suported in teh (0, 0, 0) direction
+    design.voxels[1, 1, 1] = voxart.FILLED
+    design.voxels[1, 0, 1] = voxart.CONNECTOR
+    obj_func = voxart.ObjectiveFunction(
+        face_weight=0, interior_weight=0, connector_weight=0, unsupported_weight=1.0
+    )
+
+    results = voxart.search_bottom_location(design, obj_func)
+
+    df = results.all_objective_values()
+    assert np.all(
+        df.loc[df["objective_value"] == 0.0, "bottom_location"]
+        == ["(0, 0, 0)", "(0, 0, 1)", "(1, 0, 0)"]
+    )
+    assert np.sum(df["objective_value"]) == 5.0

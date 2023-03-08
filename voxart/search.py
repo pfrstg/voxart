@@ -84,9 +84,10 @@ class ObjectiveFunction:
 
     def __init__(
         self,
-        face_weight: float = 4.0,
-        interior_weight: float = 3.0,
+        face_weight: float = 3.9,
+        interior_weight: float = 2.9,
         connector_weight: float = 1.0,
+        unsupported_weight: float = 1.9,
         masks: Optional[Masks] = None,
     ):
         """Creates ObjectiveFunction.
@@ -97,6 +98,7 @@ class ObjectiveFunction:
         self.face_weight = face_weight
         self.interior_weight = interior_weight
         self.connector_weight = connector_weight
+        self.unsupported_weight = unsupported_weight
         self.masks = masks
 
     def set_masks(self, masks: Masks):
@@ -106,12 +108,15 @@ class ObjectiveFunction:
         if not self.masks:
             raise ValueError("Must set masks before calling ObjectiveFunction")
 
-        return (
+        value = (
             self.face_weight * (design.voxels[self.masks.faces] == voxart.FILLED).sum()
             + self.interior_weight
             * (design.voxels[self.masks.interior] == voxart.FILLED).sum()
             + self.connector_weight * (design.voxels == voxart.CONNECTOR).sum()
         )
+        if design.bottom_location is not None:
+            value += self.unsupported_weight * count_unsupported(design)
+        return value
 
 
 @dataclass(order=True)
@@ -208,6 +213,7 @@ def search_filled(
     num_iterations: int,
     top_n: int,
     obj_func: Optional[ObjectiveFunction] = None,
+    masks: Optional[Masks] = None,
     rng: Optional[np.random.Generator] = None,
 ) -> SearchResults:
     if strategy == "random":
@@ -222,9 +228,10 @@ def search_filled(
     if rng is None:
         rng = np.random.default_rng()
 
-    masks = Masks(goal.size)
     if obj_func is None:
         obj_func = ObjectiveFunction()
+    if masks is None:
+        masks = Masks(goal.size)
     obj_func.set_masks(masks)
 
     results = SearchResults(top_n, obj_func, ["form_idx", "is_starting", "iteration"])
@@ -331,14 +338,16 @@ def search_connectors(
     num_iterations: int,
     top_n: int,
     obj_func: Optional[ObjectiveFunction] = None,
+    masks: Optional[Masks] = None,
     rng: Optional[np.random.Generator] = None,
 ) -> SearchResults:
     if rng is None:
         rng = np.random.default_rng()
 
-    masks = Masks(starting_design)
     if obj_func is None:
         obj_func = ObjectiveFunction()
+    if masks is None:
+        masks = Masks(starting_design)
     obj_func.set_masks(masks)
 
     edge_indices = list(zip(*np.where(masks.edges)))
@@ -474,3 +483,24 @@ def count_unsupported(design: voxart.Design):
             unsupported += 1
 
     return unsupported
+
+
+def search_bottom_location(
+    design: voxart.Design,
+    obj_func: Optional[ObjectiveFunction] = None,
+    masks: Optional[Masks] = None,
+) -> SearchResults:
+    if obj_func is None:
+        obj_func = ObjectiveFunction()
+    if masks is None:
+        masks = Masks(design)
+    obj_func.set_masks(masks)
+
+    # Keep all 8 bottom_locations
+    results = SearchResults(8, obj_func, ["bottom_location"])
+    for bottom_location in itertools.product([0, 1], repeat=3):
+        design.bottom_location = bottom_location
+
+        results.add((str(bottom_location),), copy.deepcopy(design))
+
+    return results
