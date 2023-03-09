@@ -131,12 +131,18 @@ class SearchResultsEntry:
 class SearchResults:
     """Maintains state about the entire search process for a design."""
 
-    def __init__(self, top_n: int, obj_func: ObjectiveFunction, label_names: List[str]):
+    def __init__(
+        self, top_n: Optional[int], obj_func: ObjectiveFunction, label_names: List[str]
+    ):
         self._top_n_to_keep = top_n
         self._best_results_heap = []
         self._all_objective_values = []
         self._obj_func = obj_func
         self._label_names = label_names
+
+    @property
+    def label_names(self) -> List[str]:
+        return self._label_names
 
     def add(self, label: Tuple, design: voxart.Design):
         """Adds a given design result
@@ -147,7 +153,10 @@ class SearchResults:
         """
         # See comment in Entry for why the -
         entry = SearchResultsEntry(label, design, -self._obj_func(design))
-        if len(self._best_results_heap) < self._top_n_to_keep:
+        if (
+            self._top_n_to_keep is None
+            or len(self._best_results_heap) < self._top_n_to_keep
+        ):
             heapq.heappush(self._best_results_heap, entry)
         else:
             heapq.heappushpop(self._best_results_heap, entry)
@@ -211,7 +220,7 @@ def search_filled(
     goal: voxart.Goal,
     strategy: str,
     num_iterations: int,
-    top_n: int,
+    top_n: Optional[int],
     obj_func: Optional[ObjectiveFunction] = None,
     masks: Optional[Masks] = None,
     rng: Optional[np.random.Generator] = None,
@@ -336,7 +345,7 @@ def add_path_as_connectors(design: voxart.Design, path: List[Tuple[int, int, int
 def search_connectors(
     starting_design: voxart.Design,
     num_iterations: int,
-    top_n: int,
+    top_n: Optional[int],
     obj_func: Optional[ObjectiveFunction] = None,
     masks: Optional[Masks] = None,
     rng: Optional[np.random.Generator] = None,
@@ -352,7 +361,7 @@ def search_connectors(
 
     edge_indices = list(zip(*np.where(masks.edges)))
     results = SearchResults(top_n, obj_func, ["iteration", "num_connectors"])
-    for iter_idx in trange(num_iterations):
+    for iter_idx in range(num_iterations):
         design = copy.deepcopy(starting_design)
 
         pending_vox = set(
@@ -502,5 +511,101 @@ def search_bottom_location(
         design.bottom_location = bottom_location
 
         results.add((str(bottom_location),), copy.deepcopy(design))
+
+    return results
+
+
+@dataclass
+class SearchOptions:
+    filled_batch_size: int = 3
+    filled_num_batches: int = 5
+    filled_strategy: str = "random_clear_front"
+    filled_num_to_pursue: int = 20
+    connector_num_iterations_per: int = 30
+    connector_frac: float = 0.4
+    top_n: int = 20
+    obj_func: Optional[ObjectiveFunction] = None
+
+
+def search(
+    goal: voxart.Goal, opts: SearchOptions, rng: Optional[np.random.Generator] = None
+):
+    obj_func = opts.obj_func
+    if obj_func is None:
+        obj_func = ObjectiveFunction()
+    masks = Masks(goal.size)
+    obj_func.set_masks(masks)
+
+    if rng is None:
+        rng = np.random.default_rng()
+
+    print(opts)
+
+    results = None
+
+    pbar = tqdm(total=opts.filled_num_batches * opts.filled_num_to_pursue)
+    for batch_idx in range(opts.filled_num_batches):
+        pbar.set_description(f"Batch {batch_idx}/{opts.filled_num_batches}")
+        filled_results = search_filled(
+            goal,
+            strategy=opts.filled_strategy,
+            num_iterations=opts.filled_batch_size,
+            top_n=opts.filled_num_to_pursue,
+            obj_func=obj_func,
+            masks=masks,
+            rng=rng,
+        )
+        for idx_in_batch, (filled_labels, filled_design) in enumerate(
+            filled_results.best()
+        ):
+            pbar.update(1)
+            connector_results = search_connectors(
+                filled_design,
+                num_iterations=opts.connector_num_iterations_per,
+                top_n=None,
+                obj_func=obj_func,
+                masks=masks,
+                rng=rng,
+            )
+            conn_to_pursue = connector_results.best()
+            conn_to_pursue = conn_to_pursue[
+                : round(len(conn_to_pursue) * opts.connector_frac)
+            ]
+            for idx_in_connector, (connector_labels, connector_design) in enumerate(
+                conn_to_pursue
+            ):
+                bottom_location_results = search_bottom_location(
+                    connector_design, obj_func=obj_func, masks=masks
+                )
+
+                # We lazily initialize results so that we can get all the right labels
+                # from the sub results
+                if results is None:
+                    results = SearchResults(
+                        opts.top_n,
+                        obj_func,
+                        [
+                            "batch_idx",
+                            "idx_in_batch",
+                            *["filled_" + x for x in filled_results.label_names],
+                            "idx_in_connector",
+                            *["conn_" + x for x in connector_results.label_names],
+                            *bottom_location_results.label_names,
+                        ],
+                    )
+                for bottom_location_labels, design in bottom_location_results.best():
+                    results.add(
+                        [
+                            batch_idx,
+                            idx_in_batch,
+                            *filled_labels,
+                            idx_in_connector,
+                            *connector_labels,
+                            *bottom_location_labels,
+                        ],
+                        design,
+                    )
+
+    pbar.close()
 
     return results
