@@ -297,7 +297,7 @@ def save_model_files(
     connector_style: str = "cube",
     strut_width: float = 0.2,
     scale: float = 1.0,
-    write_3mf: bool = True,
+    write_merged: bool = True,
 ):
     filled_stl = design_to_cube_stl(design, voxart.FILLED)
     filled_stl.vectors *= scale
@@ -336,20 +336,21 @@ def save_model_files(
     if connector_stl:
         connector_stl.save(connector_stl_fn)
 
-    if write_3mf:
+    if write_merged:
         slicer_path = _locate_prusa_slicer()
         if not slicer_path:
             raise ValueError("Could not find Prusa Slicer")
 
-        args = [
-            slicer_path,
-            "--export-3mf",
-            "--merge",
-            "--dont-arrange",
-            "--output",
-            file_stem + ".3mf",
-            filled_stl_fn,
-        ]
-        if connector_stl is not None:
-            args.append(connector_stl_fn)
-        subprocess.run(args, check=True)
+        for file_format in ["3mf", "obj"]:
+            args = [
+                slicer_path,
+                "--export-" + file_format,
+                "--merge",
+                "--dont-arrange",
+                "--output",
+                file_stem + "." + file_format,
+                filled_stl_fn,
+            ]
+            if connector_stl is not None:
+                args.append(connector_stl_fn)
+            subprocess.run(args, check=True)
