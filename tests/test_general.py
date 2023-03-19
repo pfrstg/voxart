@@ -1,5 +1,6 @@
 # Copyright 2023, Patrick Riley, github: pfrstg
 
+import copy
 import os
 
 import numpy as np
@@ -42,7 +43,34 @@ def test_design_diff_sizes_not_equal():
     assert design0 != design1
 
 
-def test_design_hash():
+def test_design_equality_goal_locations():
+    design0 = voxart.Design.from_size(3)
+    design0.voxels[0, 1, 2] = voxart.FILLED
+    design1 = copy.deepcopy(design0)
+
+    assert design0 == design1
+    design1.set_goal_location(2, -1)
+    assert design0 != design1
+
+
+def test_design_equality_bottom_location():
+    design0 = voxart.Design.from_size(3)
+    design0.voxels[0, 1, 2] = voxart.FILLED
+    design1 = copy.deepcopy(design0)
+
+    assert design0 == design1
+    design1.bottom_location = [0, 1, 0]
+    assert design0 != design1
+    # Switch design0 from None
+    design0.bottom_location = [0, 1, 0]
+    assert design0 == design1
+    design1.bottom_location = [1, 1, 1]
+    assert design0 != design1
+    design1.bottom_location = None
+    assert design0 != design1
+
+
+def test_design_hash_voxels():
     design_same0 = voxart.Design.from_size(3)
     design_same0.voxels[0, 1, 2] = voxart.FILLED
     design_same1 = voxart.Design.from_size(3)
@@ -59,6 +87,19 @@ def test_design_hash():
     assert len(s) == 1
     s.add(design_diff)
     assert len(s) == 2
+
+
+def test_design_hash_locations():
+    design0 = voxart.Design.from_size(3)
+    design0.voxels[0, 1, 2] = voxart.FILLED
+    design1 = copy.deepcopy(design0)
+    design1.set_goal_location(0, -1)
+    design2 = copy.deepcopy(design0)
+    design2.bottom_location = [1, 1, 1]
+
+    assert hash(design0) != hash(design1)
+    assert hash(design0) != hash(design2)
+    assert hash(design1) != hash(design2)
 
 
 def test_design_goal_locations():

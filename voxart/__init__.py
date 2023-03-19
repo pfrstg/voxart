@@ -90,10 +90,26 @@ class Design:
     def __eq__(self, other):
         if self._voxels.shape != other._voxels.shape:
             return False
-        return np.all(self._voxels == other._voxels)
+        if not np.all(self._voxels == other._voxels):
+            return False
+        if self._goal_locations != other._goal_locations:
+            return False
+        if self._bottom_location is None:
+            if other._bottom_location is not None:
+                return False
+        elif other._bottom_location is None:
+            return False
+        else:
+            if not np.all(self._bottom_location == other._bottom_location):
+                return False
+        return True
 
     def __hash__(self):
-        return hash(self._voxels.tobytes())
+        val = hash(self._voxels.tobytes())
+        val += hash(tuple(self._goal_locations))
+        if self._bottom_location is not None:
+            val += hash(self._bottom_location.tobytes())
+        return val
 
     @property
     def size(self) -> int:
