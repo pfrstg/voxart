@@ -6,7 +6,7 @@ import copy
 import heapq
 import itertools
 from dataclasses import dataclass, field
-from typing import Iterable, Iterator, List, Optional, Set, Tuple, Union
+from typing import Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -119,6 +119,19 @@ class ObjectiveFunction:
         return value
 
 
+def data_ranks(a):
+    """Computes ranks, dealing with ties by assigning lowest rank of group."""
+    a = np.asarray(a)
+    s = np.argsort(a)
+    ranks = np.empty_like(s)
+    ranks[s] = np.arange(len(a))
+    ties = np.flatnonzero(np.diff(a[s]) == 0)
+    # print(ties)
+    for tie_idx in ties:
+        ranks[s[tie_idx + 1]] = ranks[s[tie_idx]]
+    return ranks
+
+
 @dataclass(order=True)
 class SearchResultsEntry:
     # Note that we are using lower is better objective values, but because
@@ -169,10 +182,12 @@ class SearchResults:
         ]
 
     def all_objective_values(self) -> pd.DataFrame:
-        return pd.DataFrame(
+        df = pd.DataFrame(
             ((*l, v) for (l, v) in self._all_objective_values),
             columns=self._label_names + ["objective_value"],
         )
+        df["objective_value_rank"] = data_ranks(df["objective_value"])
+        return df
 
 
 def _random_search(
@@ -527,6 +542,19 @@ class SearchOptions:
     obj_func: Optional[ObjectiveFunction] = None
 
 
+class UniqueDesignIDer:
+    def __init__(self):
+        self._seen_map: Dict[int, int] = {}
+
+    def add(self, design: voxart.Design) -> Tuple(bool.int):
+        hash_val = hash(design)
+        if hash_val in self._seen_map:
+            return False, self._seen_map[hash_val]
+        uid = len(self._seen_map)
+        self._seen_map[hash_val] = uid
+        return True, uid
+
+
 def search(
     goal: voxart.Goal, opts: SearchOptions, rng: Optional[np.random.Generator] = None
 ):
@@ -542,6 +570,8 @@ def search(
     print(opts)
 
     results = None
+    seen_design_filled = UniqueDesignIDer()
+    seen_design_complete = UniqueDesignIDer()
 
     pbar = tqdm(total=opts.filled_num_batches * opts.filled_num_to_pursue)
     for batch_idx in range(opts.filled_num_batches):
@@ -559,6 +589,7 @@ def search(
             filled_results.best()
         ):
             pbar.update(1)
+            filled_is_unique, filled_uid = seen_design_filled.add(filled_design)
             connector_results = search_connectors(
                 filled_design,
                 num_iterations=opts.connector_num_iterations_per,
@@ -588,20 +619,36 @@ def search(
                             "batch_idx",
                             "idx_in_batch",
                             *["filled_" + x for x in filled_results.label_names],
+                            "filled_is_unique",
+                            "filled_uid",
                             "idx_in_connector",
                             *["conn_" + x for x in connector_results.label_names],
+                            "idx_in_bottom_location",
                             *bottom_location_results.label_names,
+                            "is_unique",
+                            "uid",
                         ],
                     )
-                for bottom_location_labels, design in bottom_location_results.best():
+                for idx_in_bottom_location, (
+                    bottom_location_labels,
+                    design,
+                ) in enumerate(bottom_location_results.best()):
+
+                    complete_is_unique, complete_uid = seen_design_complete.add(design)
+
                     results.add(
                         [
                             batch_idx,
                             idx_in_batch,
                             *filled_labels,
+                            filled_is_unique,
+                            filled_uid,
                             idx_in_connector,
                             *connector_labels,
+                            idx_in_bottom_location,
                             *bottom_location_labels,
+                            complete_is_unique,
+                            complete_uid,
                         ],
                         design,
                     )
