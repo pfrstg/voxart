@@ -580,7 +580,7 @@ class UniqueDesignIDer:
 
 def search(
     goal: voxart.Goal, opts: SearchOptions, rng: Optional[np.random.Generator] = None
-):
+) -> Tuple[Optional[SearchResults], Optional[SearchResults]]:
     obj_func = opts.obj_func
     if obj_func is None:
         obj_func = ObjectiveFunction()
@@ -592,7 +592,8 @@ def search(
 
     print(opts)
 
-    results = None
+    complete_results = None
+    all_filled_results = None
     seen_design_filled = UniqueDesignIDer()
     seen_design_complete = UniqueDesignIDer()
 
@@ -613,6 +614,33 @@ def search(
         ):
             pbar.update(1)
             filled_is_unique, filled_uid = seen_design_filled.add(filled_design)
+            # We lazily initialize all_filled_results to get the labels right
+            if all_filled_results is None:
+                all_filled_results = SearchResults(
+                    0,  # Don't keep anything, we just want the stats
+                    obj_func,
+                    [
+                        "batch_idx",
+                        "idx_in_batch",
+                        *["filled_" + x for x in filled_results.label_names],
+                        "filled_is_unique",
+                        "filled_uid",
+                    ],
+                )
+            all_filled_results.add(
+                (
+                    batch_idx,
+                    idx_in_batch,
+                    *filled_labels,
+                    filled_is_unique,
+                    filled_uid,
+                ),
+                filled_design,
+            )
+
+            if not filled_is_unique:
+                continue
+
             connector_results = search_connectors(
                 filled_design,
                 num_iterations=opts.connector_num_iterations_per,
@@ -632,10 +660,10 @@ def search(
                     connector_design, obj_func=obj_func, masks=masks
                 )
 
-                # We lazily initialize results so that we can get all the right labels
-                # from the sub results
-                if results is None:
-                    results = SearchResults(
+                # We lazily initialize complete_results so that we can get all the right labels
+                # from the sub complete_results
+                if complete_results is None:
+                    complete_results = SearchResults(
                         opts.top_n,
                         obj_func,
                         [
@@ -659,7 +687,7 @@ def search(
 
                     complete_is_unique, complete_uid = seen_design_complete.add(design)
 
-                    results.add(
+                    complete_results.add(
                         (
                             batch_idx,
                             idx_in_batch,
@@ -678,4 +706,4 @@ def search(
 
     pbar.close()
 
-    return results
+    return all_filled_results, complete_results

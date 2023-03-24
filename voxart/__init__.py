@@ -13,6 +13,7 @@ import pandas as pd
 from PIL import Image
 
 from .geometry import *
+from .plots import *
 from .search import *
 
 EMPTY: int = 0
