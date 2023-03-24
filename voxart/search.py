@@ -114,7 +114,7 @@ class ObjectiveFunction:
             * (design.voxels[self.masks.interior] == voxart.FILLED).sum()
             + self.connector_weight * (design.voxels == voxart.CONNECTOR).sum()
         )
-        if design.bottom_location is not None:
+        if design.bottom_location is not None and design.num_connectors():
             value += self.unsupported_weight * count_unsupported(design)
         return value
 

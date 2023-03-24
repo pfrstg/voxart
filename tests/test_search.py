@@ -277,6 +277,46 @@ def test_objective_function_connector():
     assert func(design) == 213
 
 
+def test_objective_function_unsupported():
+    # This has 2 face, 1 interior, 3 connectors
+    design = voxart.Design(
+        [
+            [
+                [2, 2, 0],
+                [2, 0, 0],
+                [0, 0, 0],
+            ],
+            [
+                [2, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ],
+            [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 2],
+            ],
+        ]
+    )
+
+    func = voxart.ObjectiveFunction(
+        face_weight=0,
+        interior_weight=0,
+        connector_weight=0,
+        unsupported_weight=10,
+        masks=voxart.Masks(design),
+    )
+    # no bottom, location, no connectors
+    assert func(design) == 0
+    design.bottom_location = (1, 1, 1)
+    # still no connectors, so don't count
+    assert func(design) == 0
+    design.voxels[0, 0, 0] = voxart.CONNECTOR
+    assert func(design) == 30
+    design.bottom_location = None
+    assert func(design) == 0
+
+
 def test_get_neighbors_middle():
     vox = [3, 6, 9]
     assert np.all(
