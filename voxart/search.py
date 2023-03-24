@@ -485,16 +485,31 @@ def connect_faces(
 
 
 def is_vox_unsupported(design: voxart.Design, vox: Tuple[int, int, int]):
-    if np.all(vox == design.bottom_location * (design.size - 1)):
+    if vox == tuple(design.bottom_location * (design.size - 1)):
         return False
-    for neigh_vox in get_neighbors(vox, design.size):
-        if design.voxels[tuple(neigh_vox)] == voxart.EMPTY:
-            continue
-        diff = neigh_vox - vox
-        # print(f"For {vox}, bottom {design.bottom_location}, neighbor {neigh_vox}, diff {diff}, "
-        #       f"{design.bottom_location * 2 - 1} {diff == (design.bottom_location * 2 - 1)}")
-        if np.sum(diff == (design.bottom_location * 2 - 1)) == 1:
+
+    # This may seem like a pretty dumb way to write this, but the more compact
+    # way that I wrote it was 4 times slower than this and it turned out to be a
+    # significant fraction of the total run time. This was the fastest I came up with.
+
+    diff = design.bottom_location[0] * 2 - 1
+    neigh_vox = (vox[0] + diff, vox[1], vox[2])
+    if neigh_vox[0] != -1 and neigh_vox[0] != design.size:
+        if design.voxels[neigh_vox] != voxart.EMPTY:
             return False
+
+    diff = design.bottom_location[1] * 2 - 1
+    neigh_vox = (vox[0], vox[1] + diff, vox[2])
+    if neigh_vox[1] != -1 and neigh_vox[1] != design.size:
+        if design.voxels[neigh_vox] != voxart.EMPTY:
+            return False
+
+    diff = design.bottom_location[2] * 2 - 1
+    neigh_vox = (vox[0], vox[1], vox[2] + diff)
+    if neigh_vox[2] != -1 and neigh_vox[2] != design.size:
+        if design.voxels[neigh_vox] != voxart.EMPTY:
+            return False
+
     return True
 
 
