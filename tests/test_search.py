@@ -199,6 +199,7 @@ def test_search_design_random(random_goal, strategy):
         "is_starting",
         "iteration",
         "objective_value",
+        "objective_value_rank",
     ]
     best_label, best_design = results.best()[0]
     # We're going to do a fairly weak check here because of the rotations and
@@ -279,7 +280,7 @@ def test_objective_function_connector():
 def test_get_neighbors_middle():
     vox = [3, 6, 9]
     assert np.all(
-        np.stack(list(voxart.get_neighbors(vox, 100)))
+        np.fromiter(voxart.get_neighbors(vox, 100), dtype=(int, 3))
         == [
             [2, 6, 9],
             [4, 6, 9],
@@ -294,7 +295,7 @@ def test_get_neighbors_middle():
 def test_get_neighbors_zeroedge():
     vox = [0, 0, 0]
     assert np.all(
-        np.stack(list(voxart.get_neighbors(vox, 10)))
+        np.fromiter(voxart.get_neighbors(vox, 10), dtype=(int, 3))
         == [
             [1, 0, 0],
             [0, 1, 0],
@@ -306,7 +307,7 @@ def test_get_neighbors_zeroedge():
 def test_get_neighbors_maxedge():
     vox = [9, 9, 9]
     assert np.all(
-        np.stack(list(voxart.get_neighbors(vox, 10)))
+        np.fromiter(voxart.get_neighbors(vox, 10), dtype=(int, 3))
         == [
             [8, 9, 9],
             [9, 8, 9],
@@ -318,7 +319,7 @@ def test_get_neighbors_maxedge():
 def test_get_neighbors_nearedge():
     vox = [1, 3, 4]
     assert np.all(
-        np.stack(list(voxart.get_neighbors(vox, 5)))
+        np.fromiter(voxart.get_neighbors(vox, 5), dtype=(int, 3))
         == [
             [0, 3, 4],
             [2, 3, 4],

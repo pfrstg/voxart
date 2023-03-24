@@ -280,16 +280,24 @@ def search_filled(
 
 
 def get_neighbors(vox: np.typing.ArrayLike, size: int) -> Iterator[np.typing.NDArray]:
-    vox = np.asarray(vox)
+    """Generates the neighbors of vox.
+
+    Note that the same array is always returned by the generator, so
+    if you need it to be valid after you grab the next, you have to copy it
+    """
+    # Note that this is intentionally not "asarray" because we need a copy of vox
+    # to manipulate for yielding
+    vox = np.array(vox)
     if vox.shape != (3,):
         raise ValueError(f"Only suport 3D neightbors, got shape {vox.shape}")
     for axis, delta in itertools.product([0, 1, 2], [-1, 1]):
         newval = vox[axis] + delta
         if newval < 0 or newval >= size:
             continue
-        neighbor = np.copy(vox)
-        neighbor[axis] = newval
-        yield neighbor
+        # neighbor = np.copy(vox)
+        vox[axis] = newval
+        yield vox
+        vox[axis] -= delta
 
 
 @dataclass(order=True)
@@ -476,7 +484,7 @@ def connect_faces(
         add_path_as_connectors(design, path)
 
 
-def is_vox_unsupported(design: Design, vox: Tuple[int]):
+def is_vox_unsupported(design: voxart.Design, vox: Tuple[int, int, int]):
     if np.all(vox == design.bottom_location * (design.size - 1)):
         return False
     for neigh_vox in get_neighbors(vox, design.size):
@@ -546,7 +554,7 @@ class UniqueDesignIDer:
     def __init__(self):
         self._seen_map: Dict[int, int] = {}
 
-    def add(self, design: voxart.Design) -> Tuple(bool.int):
+    def add(self, design: voxart.Design) -> Tuple[bool, int]:
         hash_val = hash(design)
         if hash_val in self._seen_map:
             return False, self._seen_map[hash_val]
@@ -637,7 +645,7 @@ def search(
                     complete_is_unique, complete_uid = seen_design_complete.add(design)
 
                     results.add(
-                        [
+                        (
                             batch_idx,
                             idx_in_batch,
                             *filled_labels,
@@ -649,7 +657,7 @@ def search(
                             *bottom_location_labels,
                             complete_is_unique,
                             complete_uid,
-                        ],
+                        ),
                         design,
                     )
 
