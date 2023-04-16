@@ -127,6 +127,81 @@ def test_design_bottom_location():
         design.bottom_location = [10, 20, -30]
 
 
+def test_design_visible_projection():
+    design = voxart.Design(
+        [
+            [
+                [0, 1, 2],
+                [2, 0, 1],
+                [1, 2, 0],
+            ],
+            [
+                [2, 0, 1],
+                [1, 2, 0],
+                [0, 1, 2],
+            ],
+            [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ],
+        ]
+    )
+    assert np.all(
+        design.visible_projection(0)
+        == [
+            [2, 1, 2],
+            [2, 2, 1],
+            [1, 2, 2],
+        ]
+    )
+    assert np.all(
+        design.visible_projection(1)
+        == [
+            [2, 1, 2],
+            [2, 2, 1],
+            [0, 0, 0],
+        ]
+    )
+    assert np.all(
+        design.visible_projection(2)
+        == [
+            [1, 2, 1],
+            [2, 1, 1],
+            [0, 0, 0],
+        ]
+    )
+
+    design.set_goal_location(0, -1)
+    design.set_goal_location(1, -1)
+    design.set_goal_location(2, -1)
+
+    assert np.all(
+        design.visible_projection(0)
+        == [
+            [2, 1, 1],
+            [1, 2, 1],
+            [1, 1, 2],
+        ]
+    )
+    assert np.all(
+        design.visible_projection(1)
+        == [
+            [1, 2, 1],
+            [1, 1, 2],
+            [0, 0, 0],
+        ]
+    )
+    assert np.all(
+        design.visible_projection(2)
+        == [
+            [2, 1, 2],
+            [1, 2, 2],
+            [0, 0, 0],
+        ]
+    )
+
+
 def test_design_save_load(tmp_path):
     fn = os.path.join(tmp_path, "design.npy")
     design = voxart.Design.from_size(3)

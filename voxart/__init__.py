@@ -21,6 +21,16 @@ CONNECTOR: int = 1
 FILLED: int = 2
 
 
+def _first_non_empty(arr: np.typing.ArrayLike):
+    """ "Returns the first non-empty value."""
+    return arr[(arr != EMPTY).argmax()]
+
+
+def _last_non_empty(arr: np.typing.ArrayLike):
+    """ "Returns the first non-empty value."""
+    return arr[(arr != EMPTY).cumsum().argmax()]
+
+
 class Design:
     """Represents a full design.
 
@@ -127,6 +137,20 @@ class Design:
         for axis in range(3):
             yield self.projection(axis)
 
+    def visible_projection(self, axis: int) -> np.typing.NDArray:
+        if self._goal_locations[axis] == 0:
+            return np.apply_along_axis(_first_non_empty, axis=axis, arr=self._voxels)
+        elif self._goal_locations[axis] == -1:
+            return np.apply_along_axis(_last_non_empty, axis=axis, arr=self._voxels)
+        else:
+            raise ValueError(
+                f"Invalid goal_location values {self._goal_locations[axis]}"
+            )
+
+    def visible_projections(self) -> Iterator[np.typing.NDArray]:
+        for axis in range(3):
+            yield self.visible_projection(axis)
+
     def slice(self, axis: int, idx: int) -> np.typing.NDArray:
         return np.take(self._voxels, idx, axis=axis)
 
@@ -185,11 +209,18 @@ class Design:
         # be larger than 1 even if that voxel itself is not set.
         return np.logical_and(min_array > 1, self._voxels == FILLED)
 
-    def projections_fig(self) -> plt.Figure:
+    def projections_fig(self, mode="max") -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
         for axis, ax in enumerate(axes):
+            if mode == "max":
+                proj = self.projection(axis)
+            elif mode == "visible":
+                proj = self.visible_projection(axis)
+            else:
+                raise ValueError(f"Bad mode {mode}")
+
             ax.imshow(
-                _transform_to_image_coords(axis, self.projection(axis)),
+                _transform_to_image_coords(axis, proj),
                 cmap="Greys",
                 interpolation="none",
                 vmin=0,
@@ -242,9 +273,23 @@ class Design:
                     loc = [self.bottom_location[0], (self.bottom_location[1] + 1) % 2]
                 ax.add_patch(
                     mpl.patches.Circle(
-                        loc, 0.1, transform=ax.transAxes, facecolor="red"
+                        loc, 0.1, transform=ax.transAxes, facecolor="red", zorder=10
                     )
                 )
+            # Frame the goal location slice
+            ax = axes[axis, self._goal_locations[axis]]
+            ax.add_patch(
+                mpl.patches.Rectangle(
+                    (0, 0),
+                    1,
+                    1,
+                    edgecolor="blue",
+                    lw=7,
+                    facecolor="none",
+                    transform=ax.transAxes,
+                    zorder=5,
+                )
+            )
 
         plt.close()
         return fig
