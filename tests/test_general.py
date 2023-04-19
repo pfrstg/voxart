@@ -258,6 +258,27 @@ def test_design_find_removable(size, seed):
     assert np.all(design.find_removable() == design.find_removable_slow())
 
 
+@pytest.mark.parametrize("axis", [0, 1, 2])
+@pytest.mark.parametrize("goal_location", [0, -1])
+def test_design_obstructing_voxels_by_axis(axis, goal_location):
+    design = voxart.Design.from_size(5)
+    design.voxels[2, 2, 2] = voxart.FILLED
+    design.set_goal_location(axis, goal_location)
+
+    mask = design._obstructing_voxels_for_axis(axis)
+    assert np.sum(mask) == 2
+    slc = [2, 2, 2]
+    slc[axis] = slice(None)
+    tube = mask[tuple(slc)]
+    assert np.sum(tube) == 2
+    if goal_location == 0:
+        assert tube[0]
+        assert tube[1]
+    else:
+        assert tube[3]
+        assert tube[4]
+
+
 def test_goal_from_size():
     goal = voxart.Goal.from_size(4)
     assert goal.size == 4

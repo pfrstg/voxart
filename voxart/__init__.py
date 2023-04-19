@@ -22,13 +22,31 @@ FILLED: int = 2
 
 
 def _first_non_empty(arr: np.typing.ArrayLike):
-    """ "Returns the first non-empty value."""
+    """Returns the first non-empty value."""
     return arr[(arr != EMPTY).argmax()]
 
 
 def _last_non_empty(arr: np.typing.ArrayLike):
-    """ "Returns the first non-empty value."""
+    """Returns the first non-empty value."""
     return arr[(arr != EMPTY).cumsum().argmax()]
+
+
+def _first_obstructing_mask(arr):
+    """Return mask array for voxels before first filled."""
+    filled_mask = arr == voxart.FILLED
+    if np.sum(filled_mask) == 0:
+        return np.full(arr.shape, False)
+    else:
+        return filled_mask.cumsum() == 0
+
+
+def _last_obstructing_mask(arr):
+    """Return mask array for voxels after last filled."""
+    filled_mask = arr == voxart.FILLED
+    if np.sum(filled_mask) == 0:
+        return np.full(arr.shape, False)
+    else:
+        return filled_mask[::-1].cumsum()[::-1] == 0
 
 
 class Design:
@@ -208,6 +226,32 @@ class Design:
         # You have to and this with the original array because the sums across all axes can be
         # be larger than 1 even if that voxel itself is not set.
         return np.logical_and(min_array > 1, self._voxels == FILLED)
+
+    def _obstructing_voxels_for_axis(self, axis) -> np.typing.NDArray:
+        """Finds all voxels in front of the last filled block for axis.
+
+        Primarily intended as helper for obstructing_voxels, but can be tested indepdendently.
+        """
+        if self.goal_locations[axis] == 0:
+            return np.apply_along_axis(
+                _first_obstructing_mask, axis=axis, arr=self._voxels
+            )
+        elif self.goal_locations[axis] == -1:
+            return np.apply_along_axis(
+                _last_obstructing_mask, axis=axis, arr=self._voxels
+            )
+        else:
+            raise ValueError(
+                f"Invalid goal_location values {self._goal_locations[axis]}"
+            )
+
+    def obstructing_voxels(self) -> np.typing.NDArray:
+        """Finds all voxels in front of the last filled block from each perspective."""
+        return (
+            self._obstructing_voxels_for_axis(0)
+            | self._obstructing_voxels_for_axis(1)
+            | self._obstructing_voxels_for_axis(2)
+        )
 
     def projections_fig(self, mode="max") -> plt.Figure:
         fig, axes = plt.subplots(1, 3, figsize=(6, 2))
