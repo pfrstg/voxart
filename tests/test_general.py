@@ -70,6 +70,16 @@ def test_design_equality_bottom_location():
     assert design0 != design1
 
 
+def test_design_equality_failure():
+    design0 = voxart.Design.from_size(3)
+    design0.voxels[0, 1, 2] = voxart.FILLED
+    design1 = copy.deepcopy(design0)
+
+    assert design0 == design1
+    design1.failure = True
+    assert design0 != design1
+
+
 def test_design_hash_voxels():
     design_same0 = voxart.Design.from_size(3)
     design_same0.voxels[0, 1, 2] = voxart.FILLED
@@ -89,17 +99,20 @@ def test_design_hash_voxels():
     assert len(s) == 2
 
 
-def test_design_hash_locations():
+def test_design_hash_other_fields():
     design0 = voxart.Design.from_size(3)
     design0.voxels[0, 1, 2] = voxart.FILLED
     design1 = copy.deepcopy(design0)
     design1.set_goal_location(0, -1)
     design2 = copy.deepcopy(design0)
     design2.bottom_location = [1, 1, 1]
+    design3 = copy.deepcopy(design0)
+    design3.failure = True
 
     assert hash(design0) != hash(design1)
     assert hash(design0) != hash(design2)
     assert hash(design1) != hash(design2)
+    assert hash(design0) != hash(design3)
 
 
 def test_design_goal_locations():

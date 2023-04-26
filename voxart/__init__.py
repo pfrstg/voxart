@@ -79,6 +79,7 @@ class Design:
         self._voxels = np.copy(voxels.astype(int))
         self._goal_locations = [0, 0, 0]
         self._bottom_location = None
+        self._failure = False
 
     @property
     def goal_locations(self):
@@ -105,6 +106,14 @@ class Design:
             )
         self._bottom_location = loc
 
+    @property
+    def failure(self):
+        return self._failure
+
+    @failure.setter
+    def failure(self, val):
+        self._failure = val
+
     @staticmethod
     def from_size(size) -> Design:
         return Design(np.zeros((size, size, size)))
@@ -117,6 +126,8 @@ class Design:
         np.save(fn, self._voxels, allow_pickle=False)
 
     def __eq__(self, other):
+        if self._failure != other._failure:
+            return False
         if self._voxels.shape != other._voxels.shape:
             return False
         if not np.all(self._voxels == other._voxels):
@@ -138,6 +149,7 @@ class Design:
         val += hash(tuple(self._goal_locations))
         if self._bottom_location is not None:
             val += hash(self._bottom_location.tobytes())
+        val += self._failure
         return val
 
     @property
