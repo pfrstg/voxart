@@ -88,6 +88,7 @@ class ObjectiveFunction:
         interior_weight: float = 2.9,
         connector_weight: float = 1.0,
         unsupported_weight: float = 1.9,
+        failure_penalty: float = 10000,
         masks: Optional[Masks] = None,
     ):
         """Creates ObjectiveFunction.
@@ -99,6 +100,7 @@ class ObjectiveFunction:
         self.interior_weight = interior_weight
         self.connector_weight = connector_weight
         self.unsupported_weight = unsupported_weight
+        self.failure_penalty = failure_penalty
         self.masks = masks
 
     def set_masks(self, masks: Masks):
@@ -116,6 +118,8 @@ class ObjectiveFunction:
         )
         if design.bottom_location is not None and design.num_connectors():
             value += self.unsupported_weight * count_unsupported(design)
+        if design.failure:
+            value += self.failure_penalty
         return value
 
 
@@ -307,6 +311,10 @@ class _PathEntry:
     distance: int
 
 
+class NoPathError(Exception):
+    pass
+
+
 def get_shortest_path_to_targets(
     design: voxart.Design,
     masks: Masks,
@@ -331,7 +339,10 @@ def get_shortest_path_to_targets(
     frontier = [_PathEntry(starting_point, None, 0)]
     visited = {}
     while True:
-        entry = heapq.heappop(frontier)
+        try:
+            entry = heapq.heappop(frontier)
+        except IndexError:
+            raise NoPathError
 
         if entry.vox in visited:
             continue
@@ -369,6 +380,7 @@ def search_connectors(
     starting_design: voxart.Design,
     num_iterations: int,
     top_n: Optional[int],
+    allow_obstructing: bool = True,
     obj_func: Optional[ObjectiveFunction] = None,
     masks: Optional[Masks] = None,
     rng: Optional[np.random.Generator] = None,
@@ -382,8 +394,14 @@ def search_connectors(
         masks = Masks(starting_design)
     obj_func.set_masks(masks)
 
+    allowed_mask = None
+    if allow_obstructing:
+        allowed_mask = None
+    else:
+        allowed_mask = ~starting_design.obstructing_voxels()
+
     edge_indices = list(zip(*np.where(masks.edges)))
-    results = SearchResults(top_n, obj_func, ["iteration", "num_connectors"])
+    results = SearchResults(top_n, obj_func, ["iteration", "num_connectors", "failure"])
     for iter_idx in range(num_iterations):
         design = copy.deepcopy(starting_design)
 
@@ -393,33 +411,37 @@ def search_connectors(
                 *np.where((design.voxels == voxart.FILLED) & ~masks.edges)
             )
         )
-        while pending_vox:
-            # TODO: Is convering to list all the time someting I shoudl avoid?
-            if len(pending_vox) < 5:
-                active_subset = pending_vox
-            else:
-                active_subset_idx = set(
-                    np.random.choice(
-                        len(pending_vox), size=len(pending_vox) // 2, replace=False
+        try:
+            while pending_vox:
+                # TODO: Is convering to list all the time someting I shoudl avoid?
+                if len(pending_vox) < 5:
+                    active_subset = pending_vox
+                else:
+                    active_subset_idx = set(
+                        np.random.choice(
+                            len(pending_vox), size=len(pending_vox) // 2, replace=False
+                        )
                     )
+                    assert len(active_subset_idx) == len(pending_vox) // 2
+                    active_subset = {
+                        v for i, v in enumerate(pending_vox) if i in active_subset_idx
+                    }
+                target, distance, path = get_shortest_path_to_targets(
+                    design,
+                    masks,
+                    starting=edge_indices,
+                    targets=active_subset,
+                    allowed_mask=allowed_mask,
+                    rng=rng,
                 )
-                assert len(active_subset_idx) == len(pending_vox) // 2
-                active_subset = {
-                    v for i, v in enumerate(pending_vox) if i in active_subset_idx
-                }
-            target, distance, path = get_shortest_path_to_targets(
-                design,
-                masks,
-                starting=edge_indices,
-                targets=active_subset,
-                allowed_mask=None,
-                rng=rng,
-            )
-            assert target in pending_vox
-            add_path_as_connectors(design, path)
-            pending_vox.remove(target)
+                assert target in pending_vox
+                add_path_as_connectors(design, path)
+                pending_vox.remove(target)
 
-        results.add((iter_idx, design.num_connectors()), design)
+            results.add((iter_idx, design.num_connectors(), False), design)
+        except NoPathError:
+            design.failure = True
+            results.add((iter_idx, design.num_connectors(), True), design)
 
     return results
 
@@ -560,6 +582,7 @@ class SearchOptions:
     filled_strategy: str = "random_clear_front"
     filled_num_to_pursue: int = 20
     connector_num_iterations_per: int = 30
+    connector_allow_obstructing: bool = False
     connector_frac: float = 0.4
     top_n: int = 20
     obj_func: Optional[ObjectiveFunction] = None
@@ -645,6 +668,7 @@ def search(
                 filled_design,
                 num_iterations=opts.connector_num_iterations_per,
                 top_n=None,
+                allow_obstructing=opts.connector_allow_obstructing,
                 obj_func=obj_func,
                 masks=masks,
                 rng=rng,

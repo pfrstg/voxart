@@ -317,6 +317,21 @@ def test_objective_function_unsupported():
     assert func(design) == 0
 
 
+def test_objective_function_unsupported():
+    design = voxart.Goal.from_size(5).create_base_design()
+    func = voxart.ObjectiveFunction(
+        face_weight=0,
+        interior_weight=0,
+        connector_weight=0,
+        unsupported_weight=10,
+        failure_penalty=10000,
+        masks=voxart.Masks(design),
+    )
+    assert func(design) == 0
+    design.failure = True
+    assert func(design) == 10000
+
+
 def test_get_neighbors_middle():
     vox = [3, 6, 9]
     assert np.all(
@@ -422,6 +437,19 @@ def test_get_shortest_path_to_targets_zero_dist(empty_design_5, rng):
     assert len(path) == 0
 
 
+def test_get_shortest_path_to_targets_impossible(empty_design_5, rng):
+    masks = voxart.Masks(empty_design_5)
+    with pytest.raises(voxart.NoPathError):
+        target, distance, path = voxart.get_shortest_path_to_targets(
+            empty_design_5,
+            masks,
+            [(2, 2, 2)],
+            {(2, 0, 0)},
+            allowed_mask=masks.edges,
+            rng=rng,
+        )
+
+
 def test_add_path_as_connectors():
     design = voxart.Design.from_size(3)
     design.voxels[1, 0, 0] = voxart.FILLED
@@ -463,6 +491,23 @@ def test_search_connectors(empty_design_5, rng):
 
     assert got_design.num_filled() == 46
     assert got_design.num_connectors() == 3
+
+
+def test_search_connectors_impossible(empty_design_5, rng):
+    design = empty_design_5
+    # Set all the back faces to obstruct pretty much everything
+    design.voxels[-1, :, :] = voxart.FILLED
+    design.voxels[:, -1, :] = voxart.FILLED
+    design.voxels[:, :, -1] = voxart.FILLED
+    # and then a voxel in the center that can't be connected
+    design.voxels[2, 2, 2] = voxart.FILLED
+
+    results = voxart.search_connectors(
+        design, num_iterations=5, top_n=1, allow_obstructing=False, rng=rng
+    )
+    _, got_design = results.best()[0]
+
+    assert got_design.failure
 
 
 def test_connect_edges():
