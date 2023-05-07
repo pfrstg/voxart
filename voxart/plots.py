@@ -44,12 +44,25 @@ def objective_distributions_plot(
     ax.set_title("filled objective_value")
 
     ax = axes[1]
-    _ecdf_plus_hist(ax, df_results["objective_value"], color="g")
+    df = df_results[~df_results["conn_failure"]]
+    _ecdf_plus_hist(ax, df["objective_value"], color="g")
+    ax.text(
+        0.01,
+        0.99,
+        f"%Success={len(df)/len(df_results)*100:.1f}",
+        ha="left",
+        va="top",
+        transform=ax.transAxes,
+    )
     ax.set_title("complete objective_value")
 
     ax = axes[2]
     _ties_plot(ax, df_filled_results["objective_value_rank"], label="filled")
-    _ties_plot(ax, df_results["objective_value_rank"], label="complete")
+    _ties_plot(
+        ax,
+        df_results.loc[~df_results["conn_failure"], "objective_value_rank"],
+        label="complete",
+    )
     ax.legend()
 
     fig.tight_layout()
@@ -57,8 +70,13 @@ def objective_distributions_plot(
     return fig
 
 
-def overall_progress_plot(df_results: pd.DataFrame):
-    """Shows how the objective value evolves over the search."""
+def overall_progress_plot(df_filled_results: pd.DataFrame, df_results: pd.DataFrame):
+    """Shows how the objective value evolves over the search.
+
+    Unique results are blue circles
+    Non-uique are gray vertical lines
+    Green line shows progress of best so far.
+    """
     df_results = df_results.sort_values(
         [
             "batch_idx",
@@ -69,9 +87,10 @@ def overall_progress_plot(df_results: pd.DataFrame):
         ]
     )
     df_results["idx_overall"] = np.arange(len(df_results))
+    df_filtered = df_results[~df_results["conn_failure"]]
 
     fig, ax = plt.subplots(1, 1, figsize=(15, 5))
-    df = df_results[~df_results["is_unique"]]
+    df = df_filtered[~df_filtered["is_unique"]]
     ax.plot(
         df["idx_overall"],
         df["objective_value"],
@@ -80,7 +99,7 @@ def overall_progress_plot(df_results: pd.DataFrame):
         marker="|",
         alpha=0.75,
     )
-    df = df_results[df_results["is_unique"]]
+    df = df_filtered[df_filtered["is_unique"]]
     ax.plot(
         df["idx_overall"],
         df["objective_value"],
@@ -90,33 +109,40 @@ def overall_progress_plot(df_results: pd.DataFrame):
         alpha=0.5,
     )
     ax.plot(
-        df_results["idx_overall"],
-        df_results["objective_value"].cummin(),
+        df_filtered["idx_overall"],
+        df_filtered["objective_value"].cummin(),
         color="g",
         marker="",
         lw=2,
     )
+    ax.set_xlim(0)
     ax.set_xlabel("overall_idx")
     ax.set_ylabel("objective_value")
     plt.close()
     return fig
 
 
-def connector_iterations_plot(df_results: pd.DataFrame):
+def connector_iterations_plot(
+    df_filled_results: pd.DataFrame, df_results: pd.DataFrame
+):
     """Helps to understand if the connector search iterations are sufficient."""
-    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
     # Show only the top 25% of ranks
     rank_limit = df_results["objective_value_rank"].max() // 4
     df = df_results[
-        df_results["is_unique"] & (df_results["objective_value_rank"] <= rank_limit)
+        df_results["is_unique"]
+        & (df_results["objective_value_rank"] <= rank_limit)
+        & ~df_results["conn_failure"]
     ]
     axes[0].scatter(df["conn_iteration"], df["objective_value"], marker=".")
     axes[0].set_xlabel("conn_iteration")
     axes[0].set_ylabel("objective_value")
 
     df_summ = (
-        df_results[df_results["idx_in_bottom_location"] == 0]
+        df_results[
+            (df_results["idx_in_bottom_location"] == 0) & ~df_results["conn_failure"]
+        ]
         .groupby("conn_iteration")["is_unique"]
         .apply(
             lambda s: pd.Series(
@@ -143,6 +169,21 @@ def connector_iterations_plot(df_results: pd.DataFrame):
     axes[1].set_xlabel("conn_iteration")
     axes[1].set_ylabel("count")
     plt.close()
+
+    df_failure_rate = (
+        df_results[df_results["idx_in_bottom_location"] == 0]
+        .groupby("conn_iteration")["conn_failure"]
+        .mean()
+        .reset_index()
+    )
+    axes[2].plot(
+        df_failure_rate["conn_iteration"],
+        df_failure_rate["conn_failure"],
+        lw=2,
+        marker="o",
+    )
+    axes[2].set_xlabel("conn_iteration")
+    axes[2].set_ylabel("failure_rate")
     return fig
 
 
@@ -150,7 +191,9 @@ def batch_plot(df_filled_results: pd.DataFrame, df_results: pd.DataFrame):
     """Helps to understand if the batches and sizes are sufficient."""
     fig, axes = plt.subplots(2, 2, figsize=(10, 8))
 
-    df = df_results[df_results["idx_in_bottom_location"] == 0]
+    df = df_results[
+        (df_results["idx_in_bottom_location"] == 0) & ~df_results["conn_failure"]
+    ]
     ax = axes[0, 0]
     ax.scatter(df["idx_in_batch"], df["objective_value_rank"], marker=".")
     ax.set_xlabel("idx_in_batch")
@@ -214,12 +257,16 @@ def batch_plot(df_filled_results: pd.DataFrame, df_results: pd.DataFrame):
     return fig
 
 
-def forms_plot(df_results: pd.DataFrame, top_n: int = 50):
+def forms_plot(
+    df_filled_results: pd.DataFrame, df_results: pd.DataFrame, top_n: int = 50
+):
     """Shows what forms achieve good objective values"""
-    fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
 
-    ax = axes[0]
-    df_best_forms = df_results[df_results["objective_value_rank"] < top_n]
+    ax = axes[0, 0]
+    df_best_forms = df_results[
+        (df_results["objective_value_rank"] < top_n) & ~df_results["conn_failure"]
+    ]
     best_unique = (
         df_best_forms.loc[df_best_forms["is_unique"], "filled_form_idx"]
         .value_counts()
@@ -233,6 +280,7 @@ def forms_plot(df_results: pd.DataFrame, top_n: int = 50):
     df_merged = pd.DataFrame(best_unique).merge(
         pd.DataFrame(best_repeat), left_index=True, right_index=True, how="outer"
     )
+    df_merged.fillna(0, inplace=True)
 
     ax.bar(df_merged.index, df_merged["unique"], color="green", label="unique")
     ax.bar(
@@ -248,15 +296,47 @@ def forms_plot(df_results: pd.DataFrame, top_n: int = 50):
     ax.set_title(f"Forms of the top {top_n}")
     ax.legend()
 
-    ax = axes[1]
+    ax = axes[0, 1]
     sns.ecdfplot(
         ax=ax,
-        data=df_results,
+        data=df_results[~df_results["conn_failure"]],
         x="objective_value",
         hue="filled_form_idx",
         palette="tab10",
     )
     ax.set_title("Objective value distribution by form")
+
+    ax = axes[1, 0]
+    forms_success = (
+        df_results.loc[~df_results["conn_failure"], "filled_form_idx"]
+        .value_counts()
+        .rename("success")
+    )
+    forms_failure = (
+        df_results.loc[df_results["conn_failure"], "filled_form_idx"]
+        .value_counts()
+        .rename("failure")
+    )
+    df = pd.DataFrame(forms_success).merge(
+        pd.DataFrame(forms_failure), left_index=True, right_index=True, how="outer"
+    )
+    df.fillna(0, inplace=True)
+
+    ax.bar(df.index, df["success"], color="m", label="success")
+    ax.bar(
+        df.index,
+        df["failure"],
+        bottom=df["success"],
+        color="y",
+        label="failure",
+    )
+    ax.set_xticks(df.index)
+    ax.set_xlabel("form_idx")
+    ax.set_ylabel("count")
+    ax.set_title("Success/Failure by form")
+    ax.legend()
+
+    axes[1, 1].axis("off")
 
     fig.tight_layout()
     plt.close()

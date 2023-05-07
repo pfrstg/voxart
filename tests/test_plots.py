@@ -39,11 +39,13 @@ def test_objective_distributions_plot(dataframes):
 
 
 def test_overall_progress_plot(dataframes):
-    voxart.overall_progress_plot(dataframes.df_results)
+    voxart.overall_progress_plot(dataframes.df_filled_results, dataframes.df_results)
 
 
 def test_connector_iterations_plot(dataframes):
-    voxart.connector_iterations_plot(dataframes.df_results)
+    voxart.connector_iterations_plot(
+        dataframes.df_filled_results, dataframes.df_results
+    )
 
 
 def test_batch_plot(dataframes):
@@ -51,4 +53,4 @@ def test_batch_plot(dataframes):
 
 
 def test_forms_plot(dataframes):
-    voxart.forms_plot(dataframes.df_results)
+    voxart.forms_plot(dataframes.df_filled_results, dataframes.df_results)
